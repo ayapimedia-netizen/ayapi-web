@@ -87,8 +87,8 @@ const defaultTestimonials: Testimonial[] = [
 export default function Home() {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
-  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(defaultHeroSlides);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(defaultTestimonials);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   // Data States
@@ -111,35 +111,38 @@ export default function Home() {
   const estimatedRoiMonths = monthlyNetProfit > 0 ? INITIAL_INVESTMENT / monthlyNetProfit : 0;
 
   useEffect(() => {
-    const loadLandingData = async () => {
-      try {
-        const [allItems, allBranches, slidesData, testimonialsData] = await Promise.all([
-          getMenuItems(),
-          getBranches(),
-          getHeroSlides(),
-          getTestimonials(),
-        ]);
+    // Preload default hero slide images immediately on mount
+    if (typeof window !== "undefined") {
+      defaultHeroSlides.forEach((s) => {
+        if (s.image) {
+          const img = new window.Image();
+          img.src = s.image;
+        }
+      });
+    }
 
-        setFeaturedItems(allItems.slice(0, 3));
-        setBranches(allBranches);
-        const finalSlides = slidesData && slidesData.length > 0 ? slidesData : defaultHeroSlides;
-        setHeroSlides(finalSlides);
-        setTestimonials(testimonialsData && testimonialsData.length > 0 ? testimonialsData : defaultTestimonials);
-
-        // Preload all slide images into browser cache immediately for instant slideshow transitions
+    // Fetch hero slides first for instant display
+    getHeroSlides().then((slidesData) => {
+      if (slidesData && slidesData.length > 0) {
+        setHeroSlides(slidesData);
         if (typeof window !== "undefined") {
-          finalSlides.forEach((s) => {
+          slidesData.forEach((s) => {
             if (s.image) {
               const img = new window.Image();
               img.src = s.image;
             }
           });
         }
-      } catch (err) {
-        console.error("Gagal memuat data landing page:", err);
       }
-    };
-    loadLandingData();
+    }).catch((err) => console.error("Error fetching slides:", err));
+
+    getMenuItems().then((items) => setFeaturedItems(items.slice(0, 3))).catch((err) => console.error("Error fetching menu:", err));
+    getBranches().then(setBranches).catch((err) => console.error("Error fetching branches:", err));
+    getTestimonials().then((testimonialsData) => {
+      if (testimonialsData && testimonialsData.length > 0) {
+        setTestimonials(testimonialsData);
+      }
+    }).catch((err) => console.error("Error fetching testimonials:", err));
   }, []);
 
   // Auto advance hero slideshow
