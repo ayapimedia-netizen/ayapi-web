@@ -69,6 +69,11 @@ export default function RootLayout({
 
   return (
     <html lang="id" className={`${plusJakarta.variable} h-full w-full max-w-full overflow-x-hidden scroll-smooth`} data-scroll-behavior="smooth">
+      <head>
+        <link rel="preconnect" href="https://vhoijuysgyuywvpdcirz.supabase.co" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://vhoijuysgyuywvpdcirz.supabase.co" />
+        <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
+      </head>
       <body className="min-h-full w-full max-w-full overflow-x-hidden flex flex-col bg-background text-foreground antialiased font-sans">
         <script
           type="application/ld+json"

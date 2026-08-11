@@ -122,8 +122,19 @@ export default function Home() {
 
         setFeaturedItems(allItems.slice(0, 3));
         setBranches(allBranches);
-        setHeroSlides(slidesData && slidesData.length > 0 ? slidesData : defaultHeroSlides);
+        const finalSlides = slidesData && slidesData.length > 0 ? slidesData : defaultHeroSlides;
+        setHeroSlides(finalSlides);
         setTestimonials(testimonialsData && testimonialsData.length > 0 ? testimonialsData : defaultTestimonials);
+
+        // Preload all slide images into browser cache immediately for instant slideshow transitions
+        if (typeof window !== "undefined") {
+          finalSlides.forEach((s) => {
+            if (s.image) {
+              const img = new window.Image();
+              img.src = s.image;
+            }
+          });
+        }
       } catch (err) {
         console.error("Gagal memuat data landing page:", err);
       }
@@ -189,8 +200,9 @@ export default function Home() {
                 src={slide.image}
                 alt={slide.alt}
                 fill
-                priority={idx === 0}
-                loading={idx === 0 ? "eager" : "lazy"}
+                priority
+                loading="eager"
+                unoptimized
                 className={`object-cover transition-transform duration-[8000ms] ease-out ${idx === currentHeroSlide ? "scale-105" : "scale-100"
                   }`}
                 sizes="100vw"
