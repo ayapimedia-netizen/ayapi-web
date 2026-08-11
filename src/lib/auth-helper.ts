@@ -67,3 +67,31 @@ export function getSecureSessionToken(): string {
   
   return sha256(`${adminUser}:${adminPass}:${secret}`);
 }
+
+export function getSecureSessionTokenWithTimestamp(timestamp: number): string {
+  const adminUser = process.env.ADMIN_USERNAME || "admin";
+  const adminPass = process.env.ADMIN_PASSWORD || "admin123";
+  const secret = process.env.SESSION_SECRET || "ayapi-fallback-secure-salt-key-999";
+  
+  return sha256(`${adminUser}:${adminPass}:${secret}:${timestamp}`);
+}
+
+export function isSessionValid(sessionValue: string | undefined): boolean {
+  if (!sessionValue) return false;
+  const parts = sessionValue.split(":");
+  if (parts.length !== 2) return false;
+  
+  const [hash, timestampStr] = parts;
+  const timestamp = parseInt(timestampStr, 10);
+  if (isNaN(timestamp)) return false;
+  
+  const now = Date.now();
+  if (now - timestamp > 24 * 60 * 60 * 1000) {
+    return false;
+  }
+  
+  const expectedHash = getSecureSessionTokenWithTimestamp(timestamp);
+  return hash === expectedHash;
+}
+
+

@@ -1,12 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
+import logger from "@/lib/logger";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder-project.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key";
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  console.warn(
-    "Supabase credentials are not configured. Please check your .env.local file."
-  );
+  logger.warn("SUPABASE", "Credentials are not configured in .env.local! Using fallback mode.");
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

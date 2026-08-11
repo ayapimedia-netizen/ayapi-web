@@ -4,8 +4,9 @@ import { cookies } from "next/headers";
 import { supabase, supabaseAdmin } from "@/lib/supabase";
 import fs from "fs/promises";
 import path from "path";
-import { getSecureSessionToken } from "@/lib/auth-helper";
+import { getSecureSessionToken, getSecureSessionTokenWithTimestamp } from "@/lib/auth-helper";
 import { revalidatePath } from "next/cache";
+import logger from "@/lib/logger";
 
 // Define Types
 export type PartnershipLead = {
@@ -24,6 +25,7 @@ export type MenuItem = {
   image: string;
   category: string;
   is_available?: boolean;
+  deleted_at?: string;
 };
 
 export type Category = {
@@ -38,6 +40,7 @@ export type GalleryItem = {
   title: string;
   image: string;
   category: string;
+  deleted_at?: string;
 };
 
 export type Branch = {
@@ -46,6 +49,23 @@ export type Branch = {
   gofood: string;
   grabfood: string;
   shopeefood: string;
+  open_time?: string;
+  close_time?: string;
+  deleted_at?: string;
+};
+
+export type Testimonial = {
+  id?: string;
+  name: string;
+  role: string;
+  rating: number;
+  review: string;
+  initials: string;
+  bg_gradient: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at?: string;
+  deleted_at?: string;
 };
 
 export type OrderItem = {
@@ -64,6 +84,45 @@ export type Order = {
   status?: string;
   created_at?: string;
 };
+
+export type SiteSettings = {
+  wa_number?: string;
+  wa_number_formatted?: string;
+  cs_email?: string;
+  headquarter_address?: string;
+  instagram_url?: string;
+  tiktok_url?: string;
+  halal_cert_number?: string;
+  haki_cert_number?: string;
+  roi_cogs_percent?: string;
+  [key: string]: string | undefined;
+};
+
+export type PartnershipPackage = {
+  id?: string;
+  package_key: string;
+  name: string;
+  price_text: string;
+  price_value: number;
+  description: string;
+  badge?: string;
+  image: string;
+  inclusions: string[];
+  sort_order?: number;
+  created_at?: string;
+  deleted_at?: string;
+};
+
+export type FAQItem = {
+  id?: string;
+  question: string;
+  answer: string;
+  sort_order?: number;
+  is_active?: boolean;
+  created_at?: string;
+  deleted_at?: string;
+};
+
 
 // Fallback Static Data in case Supabase is not connected/configured
 const fallbackMenuItems: MenuItem[] = [
@@ -188,6 +247,13 @@ const fallbackGalleryItems: GalleryItem[] = [
   },
 ];
 
+// Helper: Check if a string is a valid PostgreSQL UUID
+const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+function isValidUuid(id: string | null | undefined): boolean {
+  if (!id) return false;
+  return UUID_REGEX.test(id);
+}
+
 // Helper: Check if Supabase project URL is default placeholder
 function isSupabaseConfigured() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -204,21 +270,25 @@ export async function loginAdmin(formData: FormData) {
   const passwordInput = formData.get("password") as string;
 
   const adminUser = process.env.ADMIN_USERNAME || "admin";
-  const adminPass = process.env.ADMIN_PASSWORD || "admin123";
+  const adminPass = process.env.ADMIN_PASSWORD || "m1n66A61lAA";
 
   if (usernameInput === adminUser && passwordInput === adminPass) {
     const cookieStore = await cookies();
-    const token = getSecureSessionToken();
+    const timestamp = Date.now();
+    const hash = getSecureSessionTokenWithTimestamp(timestamp);
+    const token = `${hash}:${timestamp}`;
     cookieStore.set("admin_session", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24, // 24 hours
       path: "/",
       sameSite: "lax",
     });
+    logger.auth("LOGIN", `Admin user '${usernameInput}' logged in successfully`);
     return { success: true };
   }
 
+  logger.auth("DENIED", `Failed login attempt for username '${usernameInput}'`);
   // Delay 1.5 seconds to throttle automated brute-force attacks
   await new Promise((resolve) => setTimeout(resolve, 1500));
   return { success: false, error: "Username atau password salah!" };
@@ -227,14 +297,87 @@ export async function loginAdmin(formData: FormData) {
 export async function logoutAdmin() {
   const cookieStore = await cookies();
   cookieStore.delete("admin_session");
+  logger.auth("LOGOUT", "Admin session terminated");
   return { success: true };
 }
 
 export async function checkAdminSession() {
   const cookieStore = await cookies();
   const session = cookieStore.get("admin_session");
-  const expectedToken = getSecureSessionToken();
-  return session?.value === expectedToken;
+  if (!session?.value) return false;
+  
+  const parts = session.value.split(":");
+  if (parts.length !== 2) return false;
+  
+  const [hash, timestampStr] = parts;
+  const timestamp = parseInt(timestampStr, 10);
+  if (isNaN(timestamp)) return false;
+  
+  // Verify expiration (24h)
+  const now = Date.now();
+  if (now - timestamp > 24 * 60 * 60 * 1000) {
+    return false;
+  }
+  
+  const expectedHash = getSecureSessionTokenWithTimestamp(timestamp);
+  return hash === expectedHash;
+}
+
+// Lazy garbage collection for soft deleted items
+export async function purgeExpiredDeletedItems() {
+  if (!isSupabaseConfigured()) return;
+  
+  // 2 minutes retention
+  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+  
+  try {
+    // 1. Menu items
+    const { data: menus } = await supabaseAdmin
+      .from("menu_items")
+      .select("id, image")
+      .lt("deleted_at", twoMinutesAgo);
+    if (menus && menus.length > 0) {
+      for (const m of menus) {
+        if (m.image) await deleteStorageFile(m.image);
+      }
+      await supabaseAdmin.from("menu_items").delete().in("id", menus.map(i => i.id));
+    }
+
+    // 2. Gallery items
+    const { data: gallery } = await supabaseAdmin
+      .from("gallery_items")
+      .select("id, image")
+      .lt("deleted_at", twoMinutesAgo);
+    if (gallery && gallery.length > 0) {
+      for (const g of gallery) {
+        if (g.image) await deleteStorageFile(g.image);
+      }
+      await supabaseAdmin.from("gallery_items").delete().in("id", gallery.map(i => i.id));
+    }
+
+    // 3. Hero slides
+    const { data: slides } = await supabaseAdmin
+      .from("hero_slides")
+      .select("id, image")
+      .lt("deleted_at", twoMinutesAgo);
+    if (slides && slides.length > 0) {
+      for (const s of slides) {
+        if (s.image) await deleteStorageFile(s.image);
+      }
+      await supabaseAdmin.from("hero_slides").delete().in("id", slides.map(i => i.id));
+    }
+
+    // 4. Branches
+    await supabaseAdmin.from("branches").delete().lt("deleted_at", twoMinutesAgo);
+
+    // 5. Links
+    await supabaseAdmin.from("links").delete().lt("deleted_at", twoMinutesAgo);
+
+    // 6. Testimonials
+    await supabaseAdmin.from("testimonials").delete().lt("deleted_at", twoMinutesAgo);
+  } catch (err) {
+    console.error("Gagal membersihkan item kedaluwarsa:", err);
+  }
 }
 
 // Helper: Delete file from Supabase Storage bucket
@@ -272,28 +415,10 @@ export async function getMenuItems(): Promise<MenuItem[]> {
     const { data, error } = await supabase
       .from("menu_items")
       .select("*")
+      .is("deleted_at", null)
       .order("created_at", { ascending: true });
 
     if (error) throw error;
-    
-    // If table is empty, seed it with fallback menu items for demo convenience
-    if (data.length === 0) {
-      console.log("Database table 'menu_items' is empty. Seeding with default data...");
-      const seedItems = fallbackMenuItems.map((item) => ({
-        name: item.name,
-        price: item.price,
-        description: item.description,
-        image: item.image,
-        category: item.category
-      }));
-      const { data: seeded, error: seedError } = await supabaseAdmin
-        .from("menu_items")
-        .insert(seedItems)
-        .select();
-      
-      if (!seedError && seeded) return seeded;
-    }
-    
     return data || [];
   } catch (err) {
     console.error("Error fetching menu items from Supabase:", err);
@@ -369,30 +494,47 @@ export async function deleteMenuItem(id: string) {
     throw new Error("Supabase is not configured yet. Please set environment variables.");
   }
 
-  // Fetch the item first to get its image URL for storage cleanup
-  const { data: item, error: fetchError } = await supabaseAdmin
+  // Soft delete: update deleted_at
+  const { data, error } = await supabaseAdmin
     .from("menu_items")
-    .select("image")
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", id)
+    .select()
     .single();
 
-  if (!fetchError && item?.image) {
-    await deleteStorageFile(item.image);
-  }
-
-  const { error } = await supabaseAdmin
-    .from("menu_items")
-    .delete()
-    .eq("id", id);
-
   if (error) {
-    console.error("Error deleting menu item:", error);
+    console.error("Error soft deleting menu item:", error);
     throw error;
   }
 
   revalidatePath("/menu");
   revalidatePath("/");
-  return { success: true };
+  return { success: true, data };
+}
+
+export async function restoreMenuItem(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("menu_items")
+    .update({ deleted_at: null })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error restoring menu item:", error);
+    throw error;
+  }
+
+  revalidatePath("/menu");
+  revalidatePath("/");
+  return data;
 }
 
 /* =========================================================================
@@ -409,26 +551,10 @@ export async function getGalleryItems(): Promise<GalleryItem[]> {
     const { data, error } = await supabase
       .from("gallery_items")
       .select("*")
+      .is("deleted_at", null)
       .order("created_at", { ascending: true });
 
     if (error) throw error;
-    
-    // Seed database if empty
-    if (data.length === 0) {
-      console.log("Database table 'gallery_items' is empty. Seeding with default data...");
-      const seedItems = fallbackGalleryItems.map((item) => ({
-        title: item.title,
-        image: item.image,
-        category: item.category
-      }));
-      const { data: seeded, error: seedError } = await supabaseAdmin
-        .from("gallery_items")
-        .insert(seedItems)
-        .select();
-      
-      if (!seedError && seeded) return seeded;
-    }
-    
     return data || [];
   } catch (err) {
     console.error("Error fetching gallery items from Supabase:", err);
@@ -502,29 +628,45 @@ export async function deleteGalleryItem(id: string) {
     throw new Error("Supabase is not configured yet. Please set environment variables.");
   }
 
-  // Fetch the item first to get its image URL for storage cleanup
-  const { data: item, error: fetchError } = await supabaseAdmin
+  // Soft delete: update deleted_at
+  const { data, error } = await supabaseAdmin
     .from("gallery_items")
-    .select("image")
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", id)
+    .select()
     .single();
 
-  if (!fetchError && item?.image) {
-    await deleteStorageFile(item.image);
-  }
-
-  const { error } = await supabaseAdmin
-    .from("gallery_items")
-    .delete()
-    .eq("id", id);
-
   if (error) {
-    console.error("Error deleting gallery item:", error);
+    console.error("Error soft deleting gallery item:", error);
     throw error;
   }
 
   revalidatePath("/gallery");
-  return { success: true };
+  return { success: true, data };
+}
+
+export async function restoreGalleryItem(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("gallery_items")
+    .update({ deleted_at: null })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error restoring gallery item:", error);
+    throw error;
+  }
+
+  revalidatePath("/gallery");
+  return data;
 }
 
 /* =========================================================================
@@ -571,18 +713,19 @@ export async function uploadImage(formData: FormData): Promise<{ url: string }> 
         });
 
       if (error) {
-        console.warn("Supabase Storage upload failed, falling back to local storage:", error.message);
+        logger.warn("STORAGE", `Supabase Storage upload failed (${error.message}), switching to local storage.`);
       } else if (data) {
         const { data: publicUrlData } = supabaseAdmin.storage
           .from("ayapi-media")
           .getPublicUrl(safeFileName);
         
         if (publicUrlData?.publicUrl) {
+          logger.storage("UPLOAD", safeFileName, "Supabase Storage ayapi-media");
           return { url: publicUrlData.publicUrl };
         }
       }
     } catch (err) {
-      console.warn("Error uploading to Supabase Storage, falling back to local:", err);
+      logger.warn("STORAGE", "Error uploading to Supabase Storage, switching to local storage.", err);
     }
   }
 
@@ -596,10 +739,10 @@ export async function uploadImage(formData: FormData): Promise<{ url: string }> 
     const filePath = path.join(uploadDir, safeFileName);
     await fs.writeFile(filePath, buffer);
     
-    console.log(`Saved file locally at: /uploads/${safeFileName}`);
+    logger.storage("FALLBACK", safeFileName, "Saved locally at /public/uploads");
     return { url: `/uploads/${safeFileName}` };
   } catch (err) {
-    console.error("Failed to upload image locally:", err);
+    logger.error("STORAGE", "Failed to upload image locally", err);
     throw new Error("Gagal mengunggah gambar ke cloud maupun lokal.");
   }
 }
@@ -614,18 +757,24 @@ const fallbackBranches: Branch[] = [
     gofood: "https://gofood.link/a/FghJkL",
     grabfood: "https://r.grab.com/g/f/3-C2JDTX5JFAK8JA",
     shopeefood: "https://shopee.co.id/universal-link/now-food/shop/1002345",
+    open_time: "10:00",
+    close_time: "22:00",
   },
   {
     name: "Ayapi Margonda, Depok",
     gofood: "https://gofood.link/a/AbCdEf",
     grabfood: "https://r.grab.com/g/f/3-D8YTRN2K9DJ2KD",
     shopeefood: "https://shopee.co.id/universal-link/now-food/shop/1002346",
+    open_time: "10:00",
+    close_time: "22:00",
   },
   {
     name: "Ayapi Dago, Bandung",
     gofood: "https://gofood.link/a/XyZ123",
     grabfood: "https://r.grab.com/g/f/3-F9KLJNDK3JD9DK",
     shopeefood: "https://shopee.co.id/universal-link/now-food/shop/1002347",
+    open_time: "10:00",
+    close_time: "22:00",
   },
 ];
 
@@ -638,28 +787,10 @@ export async function getBranches(): Promise<Branch[]> {
     const { data, error } = await supabaseAdmin
       .from("branches")
       .select("*")
+      .is("deleted_at", null)
       .order("created_at", { ascending: true });
 
     if (error) throw error;
-
-    // Seed database if empty
-    if (data.length === 0) {
-      console.log("Database table 'branches' is empty. Seeding with default data...");
-      const seedItems = fallbackBranches.map((b) => ({
-        name: b.name,
-        gofood: b.gofood,
-        grabfood: b.grabfood,
-        shopeefood: b.shopeefood
-      }));
-      
-      const { data: seeded, error: seedError } = await supabaseAdmin
-        .from("branches")
-        .insert(seedItems)
-        .select();
-
-      if (!seedError && seeded) return seeded;
-    }
-
     return data || [];
   } catch (err) {
     console.error("Error fetching branches from Supabase:", err);
@@ -688,6 +819,7 @@ export async function addBranch(branch: Omit<Branch, "id">) {
 
   revalidatePath("/menu");
   revalidatePath("/kontak");
+  revalidatePath("/links");
   return data;
 }
 
@@ -713,6 +845,7 @@ export async function updateBranch(id: string, branch: Omit<Branch, "id">) {
 
   revalidatePath("/menu");
   revalidatePath("/kontak");
+  revalidatePath("/links");
   return data;
 }
 
@@ -724,19 +857,49 @@ export async function deleteBranch(id: string) {
     throw new Error("Supabase is not configured yet.");
   }
 
-  const { error } = await supabaseAdmin
+  // Soft delete: update deleted_at
+  const { data, error } = await supabaseAdmin
     .from("branches")
-    .delete()
-    .eq("id", id);
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
 
   if (error) {
-    console.error("Error deleting branch:", error);
+    console.error("Error soft deleting branch:", error);
     throw error;
   }
 
   revalidatePath("/menu");
   revalidatePath("/kontak");
-  return { success: true };
+  revalidatePath("/links");
+  return { success: true, data };
+}
+
+export async function restoreBranch(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("branches")
+    .update({ deleted_at: null })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error restoring branch:", error);
+    throw error;
+  }
+
+  revalidatePath("/menu");
+  revalidatePath("/kontak");
+  revalidatePath("/links");
+  return data;
 }
 
 export async function deleteBranches(ids: string[]) {
@@ -749,18 +912,20 @@ export async function deleteBranches(ids: string[]) {
 
   const { error } = await supabaseAdmin
     .from("branches")
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .in("id", ids);
 
   if (error) {
-    console.error("Error deleting branches:", error);
+    console.error("Error soft deleting branches:", error);
     throw error;
   }
 
   revalidatePath("/menu");
   revalidatePath("/kontak");
+  revalidatePath("/links");
   return { success: true };
 }
+
 
 /* =========================================================================
    6. PARTNERSHIP LEADS MANAGEMENT ACTIONS
@@ -884,23 +1049,6 @@ export async function getCategories(): Promise<Category[]> {
       .order("created_at", { ascending: true });
 
     if (error) throw error;
-
-    // Seed database if empty
-    if (data.length === 0) {
-      console.log("Database table 'categories' is empty. Seeding with default data...");
-      const seedItems = fallbackCategories.map((c) => ({
-        key: c.key,
-        name: c.name,
-      }));
-      
-      const { data: seeded, error: seedError } = await supabaseAdmin
-        .from("categories")
-        .insert(seedItems)
-        .select();
-
-      if (!seedError && seeded) return seeded;
-    }
-
     return data || [];
   } catch (err) {
     console.error("Error fetching categories from Supabase:", err);
@@ -1124,4 +1272,1430 @@ export async function toggleMenuItemAvailability(id: string, isAvailable: boolea
   revalidatePath("/");
   return data;
 }
+
+/* =========================================================================
+   10. LINK-IN-BIO (WEB AYAPI LINK) ACTIONS
+   ========================================================================= */
+
+export type LinkItem = {
+  id?: string;
+  title: string;
+  subtitle: string;
+  url: string;
+  icon: string;
+  is_active?: boolean;
+  sort_order: number;
+  clicks?: number;
+  created_at?: string;
+};
+
+const fallbackLinks = (waNumber: string): LinkItem[] => [
+  {
+    id: "00000000-0000-0000-0000-000000000001",
+    title: "WhatsApp Pemesanan",
+    subtitle: "Pesan Ayam Krispi Bakar online langsung ke outlet kami",
+    url: `https://wa.me/${waNumber}?text=Halo%20Ayapi%20Krispi%20Bakar%2C%20saya%20ingin%20memesan%20menu%20lezat%20Anda.`,
+    icon: "WhatsApp",
+    is_active: true,
+    sort_order: 1,
+    clicks: 0,
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000002",
+    title: "Kemitraan Franchise",
+    subtitle: "Informasi bisnis & waralaba outlet Ayapi Krispi Bakar",
+    url: `https://wa.me/${waNumber}?text=Halo%20Ayapi%20Krispi%20Bakar%2C%20saya%20tertarik%20dengan%20kemitraan%20outlet.`,
+    icon: "Briefcase",
+    is_active: true,
+    sort_order: 2,
+    clicks: 0,
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000003",
+    title: "Website Utama Ayapi",
+    subtitle: "Lihat menu lengkap, galeri, dan profil kami",
+    url: "/",
+    icon: "Globe",
+    is_active: true,
+    sort_order: 3,
+    clicks: 0,
+  },
+  {
+    id: "00000000-0000-0000-0000-000000000004",
+    title: "Instagram Resmi",
+    subtitle: "Ikuti promo menarik & update kuliner di Instagram kami",
+    url: "https://instagram.com/ayapikrispi.id",
+    icon: "Instagram",
+    is_active: true,
+    sort_order: 4,
+    clicks: 0,
+  },
+];
+
+export async function getLinks(): Promise<LinkItem[]> {
+  const wa = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "6287777652032";
+  if (!isSupabaseConfigured()) {
+    return fallbackLinks(wa);
+  }
+  try {
+    const { data, error } = await supabase
+      .from("links")
+      .select("*")
+      .eq("is_active", true)
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true });
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return fallbackLinks(wa);
+    }
+    return data;
+  } catch (err) {
+    console.error("Error fetching links from Supabase:", err);
+    return fallbackLinks(wa);
+  }
+}
+
+export async function getAdminLinks(): Promise<LinkItem[]> {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  // Lazy purge expired items
+  await purgeExpiredDeletedItems();
+
+  const wa = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "6287777652032";
+  if (!isSupabaseConfigured()) {
+    return fallbackLinks(wa);
+  }
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("links")
+      .select("*")
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true });
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return fallbackLinks(wa);
+    }
+    return data;
+  } catch (err) {
+    console.error("Error fetching admin links from Supabase:", err);
+    return fallbackLinks(wa);
+  }
+}
+
+export async function addLink(link: Omit<LinkItem, "id" | "clicks" | "created_at" | "sort_order">) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data: maxItem } = await supabaseAdmin
+    .from("links")
+    .select("sort_order")
+    .is("deleted_at", null)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+
+  const nextOrder = maxItem && maxItem.length > 0 ? maxItem[0].sort_order + 1 : 1;
+
+  const { data, error } = await supabaseAdmin
+    .from("links")
+    .insert([{ ...link, sort_order: nextOrder, clicks: 0 }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error adding link:", error);
+    throw error;
+  }
+
+  revalidatePath("/links");
+  revalidatePath("/admin");
+  return data;
+}
+
+export async function updateLink(id: string, link: Partial<Omit<LinkItem, "id" | "clicks" | "created_at">>) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    return { id, ...link };
+  }
+
+  if (isValidUuid(id)) {
+    const { data, error } = await supabaseAdmin
+      .from("links")
+      .update(link)
+      .eq("id", id)
+      .select();
+
+    if (!error && data && data.length > 0) {
+      revalidatePath("/links");
+      revalidatePath("/admin");
+      return data[0];
+    }
+  }
+
+  // If link didn't exist in Supabase (e.g. fallback item), insert it into DB
+  const { data: maxItem } = await supabaseAdmin
+    .from("links")
+    .select("sort_order")
+    .is("deleted_at", null)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+
+  const nextOrder = maxItem && maxItem.length > 0 ? maxItem[0].sort_order + 1 : 1;
+
+  const { data: newData, error: insertErr } = await supabaseAdmin
+    .from("links")
+    .insert([{
+      title: link.title || "Tautan",
+      subtitle: link.subtitle || "",
+      url: link.url || "/",
+      icon: link.icon || "Globe",
+      is_active: link.is_active !== undefined ? link.is_active : true,
+      sort_order: nextOrder,
+      clicks: 0,
+    }])
+    .select()
+    .single();
+
+  if (insertErr) {
+    console.error("Error inserting fallback link to DB:", insertErr);
+    throw insertErr;
+  }
+
+  revalidatePath("/links");
+  revalidatePath("/admin");
+  return newData;
+}
+
+export async function deleteLink(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured() || !isValidUuid(id)) {
+    return { success: true };
+  }
+
+  // Soft delete: update deleted_at
+  const { data, error } = await supabaseAdmin
+    .from("links")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id)
+    .select();
+
+  if (error) {
+    console.error("Error soft deleting link:", error);
+    throw error;
+  }
+
+  revalidatePath("/links");
+  revalidatePath("/admin");
+  return { success: true, data: data?.[0] };
+}
+
+export async function restoreLink(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured() || !isValidUuid(id)) {
+    return { success: true };
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("links")
+    .update({ deleted_at: null })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error restoring link:", error);
+    throw error;
+  }
+
+  revalidatePath("/links");
+  revalidatePath("/admin");
+  return { success: true, data };
+}
+
+export async function swapLinkOrder(id1: string, order1: number, id2: string, order2: number) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { error: err1 } = await supabaseAdmin
+    .from("links")
+    .update({ sort_order: order2 })
+    .eq("id", id1);
+
+  if (err1) throw err1;
+
+  const { error: err2 } = await supabaseAdmin
+    .from("links")
+    .update({ sort_order: order1 })
+    .eq("id", id2);
+
+  if (err2) throw err2;
+
+  revalidatePath("/links");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function incrementLinkClicks(id: string) {
+  if (!isSupabaseConfigured() || !isValidUuid(id)) return { success: true };
+
+  try {
+    const { data: linkItem, error: fetchErr } = await supabaseAdmin
+      .from("links")
+      .select("clicks")
+      .eq("id", id)
+      .single();
+
+    if (fetchErr || !linkItem) return { success: false, error: fetchErr?.message };
+
+    const nextClicks = (linkItem.clicks || 0) + 1;
+    const { error: updateErr } = await supabaseAdmin
+      .from("links")
+      .update({ clicks: nextClicks })
+      .eq("id", id);
+
+    if (updateErr) throw updateErr;
+
+    return { success: true };
+  } catch (err) {
+    console.error("Error incrementing click count:", err);
+    return { success: false, error: err instanceof Error ? err.message : "Error" };
+  }
+}
+
+export async function getThemeSetting(): Promise<string> {
+  if (!isSupabaseConfigured()) {
+    return "peach";
+  }
+  try {
+    const { data, error } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "theme")
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) {
+      await supabaseAdmin
+        .from("settings")
+        .insert([{ key: "theme", value: "peach" }]);
+      return "peach";
+    }
+    return data?.value || "peach";
+  } catch (err) {
+    console.error("Error fetching theme setting from Supabase:", err);
+    return "peach";
+  }
+}
+
+export async function updateThemeSetting(theme: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("settings")
+    .upsert({ key: "theme", value: theme })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating theme setting:", error);
+    throw error;
+  }
+
+  revalidatePath("/links");
+  revalidatePath("/admin");
+  return data;
+}
+
+// ============================================================
+// HERO SLIDES ACTIONS (Slideshow di Halaman Utama)
+// ============================================================
+
+export type HeroSlide = {
+  id?: string;
+  image: string;
+  alt: string;
+  badge?: string;
+  title?: string;
+  sub: string;
+  button_text?: string;
+  button_link?: string;
+  button2_text?: string;
+  button2_link?: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at?: string;
+};
+
+const fallbackHeroSlides: HeroSlide[] = [
+  {
+    image: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=800&q=80",
+    alt: "Ayam Krispi Bakar Juicy",
+    badge: "🔥 KULINER FRANCHISE TERBAIK",
+    title: "Aroma Smoky Juara,\nBisnis Kuliner Luar Biasa",
+    sub: "Sensasi Ayam Krispi Bakar (Krisbar) premium yang renyah di luar, juicy di dalam. Menarik ribuan pelanggan harian, menghadirkan peluang investasi franchise dengan keuntungan cepat dan berkelanjutan.",
+    button_text: "🍔 Lihat Menu Terlezat",
+    button_link: "/menu",
+    button2_text: "💼 Peluang Kemitraan",
+    button2_link: "/kemitraan",
+    sort_order: 0,
+    is_active: true,
+  },
+  {
+    image: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=800&q=80",
+    alt: "Ayam Geprek Krisbar Pedas",
+    badge: "🔥 MENU TERLARIS NYAMAN DI KANTONG",
+    title: "Krispi Bakar Geprek,\nPedas Nampol Nikmat!",
+    sub: "Kombinasi ayam krispi bakar saus pilihan digeprek dengan sambal korek bawang asli yang dibuat segar setiap hari. Lezatnya bikin ketagihan!",
+    button_text: "🍔 Lihat Menu Terlezat",
+    button_link: "/menu",
+    button2_text: "💼 Peluang Kemitraan",
+    button2_link: "/kemitraan",
+    sort_order: 1,
+    is_active: true,
+  },
+  {
+    image: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=800&q=80",
+    alt: "Outlet Kemitraan Premium Ayapi",
+    badge: "🔥 PELUANG EMAS FRANCHISE",
+    title: "Gabung Kemitraan,\nModal Ringan Cepat Balik",
+    sub: "Sistem bisnis auto-pilot yang transparan, bumbu rahasia tersuplai aman, pendampingan penuh dari tim berpengalaman. Raih omset puluhan juta per bulan!",
+    button_text: "💼 Gabung Mitra Sekarang",
+    button_link: "/kemitraan",
+    button2_text: "📞 Hubungi Kami",
+    button2_link: "/kontak",
+    sort_order: 2,
+    is_active: true,
+  },
+];
+
+// Public: fetch active slides sorted by sort_order
+export async function getHeroSlides(): Promise<HeroSlide[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("hero_slides")
+      .select("*")
+      .eq("is_active", true)
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error("Error fetching hero slides from Supabase:", err);
+    return [];
+  }
+}
+
+// Admin: fetch ALL slides (including inactive) sorted by sort_order
+export async function getAdminHeroSlides(): Promise<HeroSlide[]> {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  // Lazy purge expired items
+  await purgeExpiredDeletedItems();
+
+  if (!isSupabaseConfigured()) return [];
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("hero_slides")
+      .select("*")
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error("Error fetching admin hero slides from Supabase:", err);
+    return [];
+  }
+}
+
+export async function addHeroSlide(slide: Omit<HeroSlide, "id" | "created_at">) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("hero_slides")
+    .insert([slide])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error adding hero slide:", error);
+    throw error;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return data;
+}
+
+export async function updateHeroSlide(id: string, updates: Partial<HeroSlide>) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("hero_slides")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating hero slide:", error);
+    throw error;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return data;
+}
+
+export async function deleteHeroSlide(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  // Soft delete: update deleted_at
+  const { data, error } = await supabaseAdmin
+    .from("hero_slides")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error soft deleting hero slide:", error);
+    throw error;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { success: true, data };
+}
+
+export async function restoreHeroSlide(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("hero_slides")
+    .update({ deleted_at: null })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error restoring hero slide:", error);
+    throw error;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return data;
+}
+
+export async function swapHeroSlideOrder(id1: string, order1: number, id2: string, order2: number) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const [res1, res2] = await Promise.all([
+    supabaseAdmin.from("hero_slides").update({ sort_order: order2 }).eq("id", id1),
+    supabaseAdmin.from("hero_slides").update({ sort_order: order1 }).eq("id", id2),
+  ]);
+
+  if (res1.error || res2.error) {
+    console.error("Error swapping hero slide order:", res1.error || res2.error);
+    throw res1.error || res2.error;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+/* =========================================================================
+   11. TESTIMONIALS CRUD ACTIONS
+   ========================================================================= */
+
+const fallbackTestimonials: Testimonial[] = [
+  {
+    name: "Indra Kurniawan",
+    role: "Mitra Franchise - Bandung",
+    rating: 5,
+    review: "Keputusan terbaik saya tahun lalu adalah bergabung menjadi mitra Ayapi. Modal awalnya sangat terjangkau, bumbu disuplai terpusat jadi rasa selalu konsisten. Kurang dari 5 bulan outlet saya sudah balik modal!",
+    initials: "IK",
+    bg_gradient: "from-red-500 to-orange-500",
+    sort_order: 1,
+    is_active: true,
+  },
+  {
+    name: "Siti Rahma",
+    role: "Pelanggan Setia - Depok",
+    rating: 5,
+    review: "Ayam krispi bakar di sini bener-bener beda! Kulit luarnya garing renyah tapi dagingnya tetap juicy banget. Ditambah saus bakar madunya yang meresap sampai ke dalam daging. Langganan keluarga kami!",
+    initials: "SR",
+    bg_gradient: "from-amber-500 to-yellow-500",
+    sort_order: 2,
+    is_active: true,
+  },
+  {
+    name: "Rian Hidayat",
+    role: "Pecinta Kuliner - Jakarta",
+    rating: 5,
+    review: "Paket Geprek Krisbar Ijonya juara banget! Pedas cabai ijonya segar gurih, rasa smoky ayam bakarnya dapet, dan porsinya bikin kenyang. Pesan lewat keranjang belanja web ini juga gampang banget, langsung masuk WA!",
+    initials: "RH",
+    bg_gradient: "from-rose-500 to-red-600",
+    sort_order: 3,
+    is_active: true,
+  },
+];
+
+export async function getTestimonials(): Promise<Testimonial[]> {
+  if (!isSupabaseConfigured()) {
+    return fallbackTestimonials;
+  }
+  try {
+    const { data, error } = await supabase
+      .from("testimonials")
+      .select("*")
+      .eq("is_active", true)
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error("Error fetching testimonials:", err);
+    return fallbackTestimonials;
+  }
+}
+
+export async function getAdminTestimonials(): Promise<Testimonial[]> {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  // Lazy purge expired items
+  await purgeExpiredDeletedItems();
+
+  if (!isSupabaseConfigured()) {
+    return fallbackTestimonials;
+  }
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("testimonials")
+      .select("*")
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error("Error fetching admin testimonials:", err);
+    return fallbackTestimonials;
+  }
+}
+
+export async function addTestimonial(testimonial: Omit<Testimonial, "id" | "created_at" | "sort_order">) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data: maxItem } = await supabaseAdmin
+    .from("testimonials")
+    .select("sort_order")
+    .is("deleted_at", null)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+
+  const nextOrder = maxItem && maxItem.length > 0 ? maxItem[0].sort_order + 1 : 1;
+
+  const { data, error } = await supabaseAdmin
+    .from("testimonials")
+    .insert([{ ...testimonial, sort_order: nextOrder }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error adding testimonial:", error);
+    throw error;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return data;
+}
+
+export async function updateTestimonial(id: string, updates: Partial<Testimonial>) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("testimonials")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating testimonial:", error);
+    throw error;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return data;
+}
+
+export async function deleteTestimonial(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  // Soft delete: update deleted_at
+  const { data, error } = await supabaseAdmin
+    .from("testimonials")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error soft deleting testimonial:", error);
+    throw error;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { success: true, data };
+}
+
+export async function restoreTestimonial(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("testimonials")
+    .update({ deleted_at: null })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error restoring testimonial:", error);
+    throw error;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return data;
+}
+
+export async function swapTestimonialOrder(id1: string, order1: number, id2: string, order2: number) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const [res1, res2] = await Promise.all([
+    supabaseAdmin.from("testimonials").update({ sort_order: order2 }).eq("id", id1),
+    supabaseAdmin.from("testimonials").update({ sort_order: order1 }).eq("id", id2),
+  ]);
+
+  if (res1.error || res2.error) {
+    console.error("Error swapping testimonial order:", res1.error || res2.error);
+    throw res1.error || res2.error;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+// =========================================================================
+// SITE SETTINGS ACTIONS
+// =========================================================================
+
+const fallbackSettings: Record<string, string> = {
+  wa_number: "6287777652032",
+  wa_number_formatted: "+62 877-7765-2032",
+  cs_email: "info@ayapikrispibar.com",
+  headquarter_address: "Jl. Mawar Indah No. 12, Jakarta Selatan, Indonesia",
+  instagram_url: "https://instagram.com/ayapikrispibar",
+  tiktok_url: "https://tiktok.com/@ayapikrispibar",
+  halal_cert_number: "ID3111000012345",
+  haki_cert_number: "IPT2024001234",
+  roi_cogs_percent: "55",
+};
+
+export async function getAllSiteSettings(): Promise<Record<string, string>> {
+  if (!isSupabaseConfigured()) {
+    return fallbackSettings;
+  }
+  try {
+    const { data, error } = await supabase.from("settings").select("key, value");
+    if (error) throw error;
+    if (!data || data.length === 0) return fallbackSettings;
+
+    const result: Record<string, string> = { ...fallbackSettings };
+    data.forEach((item: { key: string; value: string }) => {
+      result[item.key] = item.value;
+    });
+    return result;
+  } catch (err) {
+    console.error("Error fetching site settings from Supabase:", err);
+    return fallbackSettings;
+  }
+}
+
+export async function updateAllSiteSettings(settings: Record<string, string>) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const rows = Object.entries(settings).map(([key, value]) => ({
+    key,
+    value: value ?? "",
+  }));
+
+  const { data, error } = await supabaseAdmin
+    .from("settings")
+    .upsert(rows)
+    .select();
+
+  if (error) {
+    console.error("Error updating site settings:", error);
+    throw new Error(error.message || "Gagal memperbarui pengaturan website.");
+  }
+
+  revalidatePath("/");
+  revalidatePath("/kemitraan");
+  revalidatePath("/kontak");
+  revalidatePath("/admin");
+  return data;
+}
+
+// =========================================================================
+// PARTNERSHIP PACKAGES ACTIONS
+// =========================================================================
+
+const fallbackPackages: PartnershipPackage[] = [
+  {
+    id: "pkg-1",
+    package_key: "express",
+    name: "Express",
+    price_text: "50 Juta*",
+    price_value: 50000000,
+    description: "Memulai bisnis Ayapi dengan konsep praktis menggunakan rombong semi-kontainer. Sangat cocok untuk lokasi pinggir jalan, perumahan, atau area bazar.",
+    image: "/express_booth_mockup.png",
+    inclusions: [
+      "Rombong / Booth Express Semi-Kontainer",
+      "Peralatan Masak & Penggorengan Lengkap",
+      "Starter Kit Bahan Baku Awal (Ayam & Bumbu)",
+      "Media Promosi Fisik (Banner, X-Banner)",
+      "Sistem Kasir Digital (POS) & Pelatihan Staf",
+      "Pendaftaran Delivery Online (GoFood/GrabFood)",
+    ],
+    sort_order: 1,
+  },
+  {
+    id: "pkg-2",
+    package_key: "mini",
+    name: "Mini Resto",
+    price_text: "150 Juta*",
+    price_value: 150000000,
+    description: "Hadir dengan konsep outlet yang lebih rapi dan profesional, Mini Resto memungkinkan Anda melayani dine-in terbatas sekaligus take away.",
+    badge: "Terpopuler",
+    image: "/mini_resto_mockup.png",
+    inclusions: [
+      "Booth Kontainer / Renovasi Ruko Mini Premium",
+      "Peralatan Dapur Restoran Standar Lengkap",
+      "Meja & Kursi Pelanggan (Dine-in Terbatas)",
+      "Starter Kit Bahan Baku Skala Menengah",
+      "Sistem POS Cloud & Tablet Kasir Lengkap",
+      "Seragam Karyawan & Manual Book SOP",
+      "Marketing Launching & Support Sosial Media",
+    ],
+    sort_order: 2,
+  },
+  {
+    id: "pkg-3",
+    package_key: "premium",
+    name: "Premium Resto",
+    price_text: "250 Juta*",
+    price_value: 250000000,
+    description: "Konsep restoran dengan kapasitas dine-in yang lebih luas dan tampilan yang lebih premium. Ideal untuk area strategis pusat kota.",
+    image: "/premium_resto_mockup.png",
+    inclusions: [
+      "Desain Interior & Renovasi Outlet Premium Lengkap",
+      "Peralatan Dapur Komersial Stainless Steel",
+      "Kapasitas Dine-in Nyaman (Hingga 30+ Kursi)",
+      "SOP Lengkap & Pelatihan Manajemen Supervisor",
+      "Integrasi POS & Manajemen Inventori Real-time",
+      "Kampanye Grand Opening & Influencer Marketing",
+      "Pendampingan Grand Opening oleh Tim Pusat",
+    ],
+    sort_order: 3,
+  },
+];
+
+export async function getPartnershipPackages(): Promise<PartnershipPackage[]> {
+  if (!isSupabaseConfigured()) {
+    return fallbackPackages;
+  }
+  try {
+    const { data, error } = await supabase
+      .from("partnership_packages")
+      .select("*")
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true });
+
+    if (error || !data || data.length === 0) {
+      return fallbackPackages;
+    }
+    return data;
+  } catch (err) {
+    console.error("Error fetching partnership packages from Supabase:", err);
+    return fallbackPackages;
+  }
+}
+
+export async function getAdminPartnershipPackages(): Promise<PartnershipPackage[]> {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    return fallbackPackages;
+  }
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("partnership_packages")
+      .select("*")
+      .order("sort_order", { ascending: true });
+
+    if (error || !data || data.length === 0) return fallbackPackages;
+    return data;
+  } catch (err) {
+    console.error("Error fetching admin partnership packages:", err);
+    return fallbackPackages;
+  }
+}
+
+export async function addPartnershipPackage(pkg: PartnershipPackage) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const payload = {
+    ...pkg,
+    badge: pkg.badge ?? "",
+  };
+
+  const { data, error } = await supabaseAdmin
+    .from("partnership_packages")
+    .insert([payload])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error adding partnership package:", error);
+    throw new Error(error.message || "Gagal menambahkan paket kemitraan ke Supabase.");
+  }
+
+  revalidatePath("/kemitraan");
+  revalidatePath("/admin");
+  return data;
+}
+
+export async function updatePartnershipPackage(id: string, pkg: Partial<PartnershipPackage>) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const payload = { ...pkg };
+  if (payload.badge === undefined) delete payload.badge;
+
+  const { data, error } = await supabaseAdmin
+    .from("partnership_packages")
+    .update(payload)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating partnership package:", error);
+    throw new Error(error.message || "Gagal memperbarui paket kemitraan.");
+  }
+
+  revalidatePath("/kemitraan");
+  revalidatePath("/admin");
+  return data;
+}
+
+export async function deletePartnershipPackage(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("partnership_packages")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error deleting partnership package:", error);
+    throw new Error(error.message || "Gagal menghapus paket kemitraan.");
+  }
+
+  revalidatePath("/kemitraan");
+  revalidatePath("/admin");
+  return { success: true, data };
+}
+
+export async function restorePartnershipPackage(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("partnership_packages")
+    .update({ deleted_at: null })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error restoring partnership package:", error);
+    throw new Error(error.message || "Gagal memulihkan paket kemitraan.");
+  }
+
+  revalidatePath("/kemitraan");
+  revalidatePath("/admin");
+  return data;
+}
+
+// =========================================================================
+// FAQS ACTIONS
+// =========================================================================
+
+const fallbackFaqs: FAQItem[] = [
+  {
+    id: "faq-1",
+    question: "Apakah bumbu rahasia disediakan oleh pusat?",
+    answer: "Ya, semua bumbu rahasia marinasi ayam dan saus bakar disuplai dari pusat dalam bentuk kemasan praktis untuk menjaga konsistensi cita rasa khas Ayapi di semua cabang.",
+    sort_order: 1,
+    is_active: true,
+  },
+  {
+    id: "faq-2",
+    question: "Berapa lama estimasi waktu dari tanda tangan kontrak hingga outlet buka?",
+    answer: "Proses lengkap rata-rata memakan waktu 2 hingga 4 minggu, meliputi survei lokasi, pengiriman booth, pelatihan SOP karyawan, hingga persiapan Grand Opening.",
+    sort_order: 2,
+    is_active: true,
+  },
+  {
+    id: "faq-3",
+    question: "Apakah ada royalti fee bulanan?",
+    answer: "Tidak. Ayapi menggunakan sistem kemitraan tanpa bagi hasil bulanan (0% royalty fee). Semua keuntungan bersih yang diperoleh dari outlet sepenuhnya milik mitra.",
+    sort_order: 3,
+    is_active: true,
+  },
+  {
+    id: "faq-4",
+    question: "Bagaimana dengan pencarian lokasi dan karyawan?",
+    answer: "Pencarian lokasi dan karyawan dilakukan oleh mitra. Namun, tim analis kami akan melakukan survei kelayakan lokasi secara mendalam dan menyediakan materi pelatihan lengkap untuk karyawan Anda.",
+    sort_order: 4,
+    is_active: true,
+  },
+  {
+    id: "faq-5",
+    question: "Apakah boleh menjual menu di luar menu resmi Ayapi?",
+    answer: "Demi menjaga standardisasi brand dan kualitas rasa, mitra dilarang keras menjual menu makanan berat di luar menu resmi yang dikeluarkan oleh pusat Ayapi.",
+    sort_order: 5,
+    is_active: true,
+  },
+];
+
+export async function getFaqs(): Promise<FAQItem[]> {
+  if (!isSupabaseConfigured()) {
+    return fallbackFaqs;
+  }
+  try {
+    const { data, error } = await supabase
+      .from("faqs")
+      .select("*")
+      .eq("is_active", true)
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true });
+
+    if (error || !data || data.length === 0) {
+      return fallbackFaqs;
+    }
+    return data;
+  } catch (err) {
+    console.error("Error fetching FAQs from Supabase:", err);
+    return fallbackFaqs;
+  }
+}
+
+export async function getAdminFaqs(): Promise<FAQItem[]> {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    return fallbackFaqs;
+  }
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("faqs")
+      .select("*")
+      .order("sort_order", { ascending: true });
+
+    if (error || !data || data.length === 0) return fallbackFaqs;
+    return data;
+  } catch (err) {
+    console.error("Error fetching admin FAQs:", err);
+    return fallbackFaqs;
+  }
+}
+
+
+export async function addFaq(faq: FAQItem) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("faqs")
+    .insert([faq])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error adding FAQ:", error);
+    throw new Error(error.message || "Gagal menambahkan FAQ ke Supabase.");
+  }
+
+  revalidatePath("/kemitraan");
+  revalidatePath("/admin");
+  return data;
+}
+
+export async function updateFaq(id: string, faq: Partial<FAQItem>) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("faqs")
+    .update(faq)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating FAQ:", error);
+    throw new Error(error.message || "Gagal memperbarui FAQ.");
+  }
+
+  revalidatePath("/kemitraan");
+  revalidatePath("/admin");
+  return data;
+}
+
+export async function deleteFaq(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("faqs")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error deleting FAQ:", error);
+    throw new Error(error.message || "Gagal menghapus FAQ.");
+  }
+
+  revalidatePath("/kemitraan");
+  revalidatePath("/admin");
+  return { success: true, data };
+}
+
+export async function restoreFaq(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("faqs")
+    .update({ deleted_at: null })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error restoring FAQ:", error);
+    throw new Error(error.message || "Gagal memulihkan FAQ.");
+  }
+
+  revalidatePath("/kemitraan");
+  revalidatePath("/admin");
+  return data;
+}
+
+export async function swapFaqOrder(id1: string, order1: number, id2: string, order2: number) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured yet.");
+  }
+
+  const [res1, res2] = await Promise.all([
+    supabaseAdmin.from("faqs").update({ sort_order: order2 }).eq("id", id1),
+    supabaseAdmin.from("faqs").update({ sort_order: order1 }).eq("id", id2),
+  ]);
+
+  const swapErr = res1.error || res2.error;
+  if (swapErr) {
+    console.error("Error swapping FAQ order:", swapErr);
+    throw new Error(swapErr.message || "Gagal mengubah urutan FAQ.");
+  }
+
+  revalidatePath("/kemitraan");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+/* =========================================================================
+   12. TRASH BIN (KERANJANG SAMPAH) ACTIONS
+   ========================================================================= */
+
+export type TrashItem = {
+  id: string;
+  type: "menu" | "gallery" | "branch" | "link" | "slideshow" | "testimonial" | "package" | "faq";
+  title: string;
+  subtitle?: string;
+  image?: string;
+  deleted_at: string;
+};
+
+export async function getTrashItems(): Promise<TrashItem[]> {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) return [];
+  if (!isSupabaseConfigured()) return [];
+
+  const trash: TrashItem[] = [];
+
+  try {
+    const [
+      { data: menus },
+      { data: gallery },
+      { data: branches },
+      { data: links },
+      { data: slides },
+      { data: testimonials },
+    ] = await Promise.all([
+      supabaseAdmin.from("menu_items").select("id, name, category, image, deleted_at").not("deleted_at", "is", null),
+      supabaseAdmin.from("gallery_items").select("id, title, category, image, deleted_at").not("deleted_at", "is", null),
+      supabaseAdmin.from("branches").select("id, name, city, deleted_at").not("deleted_at", "is", null),
+      supabaseAdmin.from("links").select("id, title, url, deleted_at").not("deleted_at", "is", null),
+      supabaseAdmin.from("hero_slides").select("id, title, alt, image, deleted_at").not("deleted_at", "is", null),
+      supabaseAdmin.from("testimonials").select("id, name, role, deleted_at").not("deleted_at", "is", null),
+    ]);
+
+    if (menus) {
+      menus.forEach((m) => trash.push({ id: m.id, type: "menu", title: m.name, subtitle: `Menu (${m.category})`, image: m.image, deleted_at: m.deleted_at }));
+    }
+    if (gallery) {
+      gallery.forEach((g) => trash.push({ id: g.id, type: "gallery", title: g.title, subtitle: `Galeri (${g.category})`, image: g.image, deleted_at: g.deleted_at }));
+    }
+    if (branches) {
+      branches.forEach((b) => trash.push({ id: b.id, type: "branch", title: b.name, subtitle: `Cabang ${b.city}`, deleted_at: b.deleted_at }));
+    }
+    if (links) {
+      links.forEach((l) => trash.push({ id: l.id, type: "link", title: l.title, subtitle: l.url, deleted_at: l.deleted_at }));
+    }
+    if (slides) {
+      slides.forEach((s) => trash.push({ id: s.id, type: "slideshow", title: s.title || s.alt, subtitle: "Hero Slideshow", image: s.image, deleted_at: s.deleted_at }));
+    }
+    if (testimonials) {
+      testimonials.forEach((t) => trash.push({ id: t.id, type: "testimonial", title: t.name, subtitle: `Testimoni (${t.role})`, deleted_at: t.deleted_at }));
+    }
+
+    trash.sort((a, b) => new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime());
+    return trash;
+  } catch (err) {
+    console.error("Error fetching trash items:", err);
+    return [];
+  }
+}
+
+export async function permanentDeleteTrashItem(id: string, type: TrashItem["type"]) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+  if (!isSupabaseConfigured() || !isValidUuid(id)) return { success: true };
+
+  const tableMap: Record<TrashItem["type"], string> = {
+    menu: "menu_items",
+    gallery: "gallery_items",
+    branch: "branches",
+    link: "links",
+    slideshow: "hero_slides",
+    testimonial: "testimonials",
+    package: "partnership_packages",
+    faq: "faqs",
+  };
+
+  const tableName = tableMap[type];
+  if (!tableName) return { success: false };
+
+  if (type === "menu" || type === "gallery" || type === "slideshow") {
+    const { data: item } = await supabaseAdmin.from(tableName).select("image").eq("id", id).single();
+    if (item?.image) await deleteStorageFile(item.image);
+  }
+
+  const { error } = await supabaseAdmin.from(tableName).delete().eq("id", id);
+  if (error) throw error;
+
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function restoreTrashItem(id: string, type: TrashItem["type"]) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+  if (!isSupabaseConfigured() || !isValidUuid(id)) return { success: true };
+
+  const tableMap: Record<TrashItem["type"], string> = {
+    menu: "menu_items",
+    gallery: "gallery_items",
+    branch: "branches",
+    link: "links",
+    slideshow: "hero_slides",
+    testimonial: "testimonials",
+    package: "partnership_packages",
+    faq: "faqs",
+  };
+
+  const tableName = tableMap[type];
+  if (!tableName) return { success: false };
+
+  const { error } = await supabaseAdmin.from(tableName).update({ deleted_at: null }).eq("id", id);
+  if (error) throw error;
+
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function emptyAllTrashItems() {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+  if (!isSupabaseConfigured()) return { success: true };
+
+  try {
+    const trashItems = await getTrashItems();
+    for (const item of trashItems) {
+      await permanentDeleteTrashItem(item.id, item.type);
+    }
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (err) {
+    console.error("Error emptying trash:", err);
+    throw err;
+  }
+}
+
 

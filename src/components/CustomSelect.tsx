@@ -10,7 +10,7 @@ interface Option {
 interface CustomSelectProps {
   options: Option[];
   value: string | number;
-  onChange: (value: any) => void;
+  onChange: (value: string | number) => void;
   className?: string;
   placeholder?: string;
   id?: string;
@@ -49,13 +49,14 @@ export default function CustomSelect({
 
   // Handle animation class timing
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (isOpen) {
       // Small timeout to allow element to render before adding active class (triggering transition)
-      const timer = setTimeout(() => setAnimate(true), 10);
-      return () => clearTimeout(timer);
+      timer = setTimeout(() => setAnimate(true), 10);
     } else {
-      setAnimate(false);
+      timer = setTimeout(() => setAnimate(false), 10);
     }
+    return () => clearTimeout(timer);
   }, [isOpen]);
 
   const handleToggle = () => {
@@ -137,7 +138,7 @@ export default function CustomSelect({
       {(isOpen || animate) && (
         <div
           role="listbox"
-          className={`absolute z-50 left-0 right-0 mt-2 bg-white/95 backdrop-blur-md border border-gray-100 rounded-2xl shadow-xl overflow-hidden py-1.5 transition-all duration-200 origin-top ${
+          className={`absolute z-50 left-0 right-0 mt-2 bg-white/95 backdrop-blur-md border border-gray-100 rounded-2xl shadow-xl overflow-hidden py-0 transition-all duration-200 origin-top ${
             animate
               ? "opacity-100 scale-100 translate-y-0"
               : "opacity-0 scale-95 -translate-y-2 pointer-events-none"

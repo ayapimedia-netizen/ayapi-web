@@ -1,21 +1,28 @@
 @import "tailwindcss";
 
-:root {
-  --background: #FAFAFA;
-  --foreground: #1A1A1A;
-  --brand-red: #C62828;
-  --brand-yellow: #F5B800;
+@theme {
+  --color-background: #FFFFFF;
+  --color-foreground: #111827;
+  --color-brand-red: #99000B;
+  --color-brand-cream: #FFFFFF;
+  --color-brand-orange: #E85B04;
+  --color-brand-maroon: #7A0C14;
+  --color-brand-yellow: #F5B800;
+  --color-brand-dark: #111827;
+  --color-brand-light: #FFFFFF;
+  --color-brand-foreground: #111827;
+  --font-sans: var(--font-plus-jakarta);
 }
 
-@theme {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-brand-red: var(--brand-red);
-  --color-brand-yellow: var(--brand-yellow);
-  --color-brand-dark: #1A1A1A;
-  --color-brand-light: #FFF9F8;
-  --color-brand-foreground: #1A1A1A;
-  --font-sans: var(--font-geist-sans);
+:root {
+  --background: #FFFFFF;
+  --foreground: #111827;
+  --brand-red: #99000B;
+  --brand-cream: #FFFFFF;
+  --brand-orange: #E85B04;
+  --brand-maroon: #7A0C14;
+  --brand-yellow: #F5B800;
+  --brand-dark: #111827;
 }
 
 body {
@@ -66,6 +73,30 @@ html {
   }
 }
 
+@keyframes pulse-subtle {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.85;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 .animate-float {
   animation: float 4s ease-in-out infinite;
 }
@@ -73,6 +104,16 @@ html {
 .animate-float-delayed {
   animation: float 4s ease-in-out infinite;
   animation-delay: 2s;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, rgba(245, 184, 0, 0) 0%, rgba(255, 255, 255, 0.4) 50%, rgba(245, 184, 0, 0) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite;
 }
 
 @keyframes fade-in-up {
@@ -89,4 +130,168 @@ html {
 
 .animate-fade-in-up {
   animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Text Gradients */
+.text-gradient-flame {
+  background: linear-gradient(135deg, #FF4D4D 0%, #F5B800 50%, #FF8C00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #FFE082 0%, #FFB300 50%, #FF6F00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-maroon {
+  background: linear-gradient(135deg, #C62828 0%, #8C1C1C 50%, #5E1111 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-dark {
+  background: linear-gradient(135deg, #1A1A1A 0%, #4A4A4A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Geometric background grid patterns */
+.bg-grid-pattern {
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, rgba(198, 40, 40, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(198, 40, 40, 0.03) 1px, transparent 1px);
+}
+
+.bg-grid-pattern-light {
+  background-size: 24px 24px;
+  background-image:
+    linear-gradient(to right, rgba(198, 40, 40, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(198, 40, 40, 0.02) 1px, transparent 1px);
+}
+
+.bg-radial-ember {
+  background: radial-gradient(circle at 50% 0%, rgba(140, 28, 28, 0.2) 0%, rgba(15, 15, 18, 0) 70%);
+}
+
+/* Custom soft & glowing shadows */
+.shadow-premium {
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.shadow-premium-hover {
+  box-shadow: 0 20px 40px -15px rgba(198, 40, 40, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.shadow-glow-red {
+  box-shadow: 0 0 25px rgba(198, 40, 40, 0.35);
+}
+
+.shadow-glow-maroon {
+  box-shadow: 0 0 25px rgba(140, 28, 28, 0.4);
+}
+
+.shadow-glow-amber {
+  box-shadow: 0 0 25px rgba(245, 184, 0, 0.35);
+}
+
+/* Micro-interaction translation class */
+.hover-scale-premium {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-scale-premium:hover {
+  transform: translateY(-5px) scale(1.01);
+}
+
+/* Glassmorphism paneling */
+.bg-glass {
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.bg-glass-dark {
+  background-color: rgba(18, 18, 22, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bg-glass-ember {
+  background: linear-gradient(135deg, rgba(198, 40, 40, 0.08) 0%, rgba(245, 184, 0, 0.04) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(198, 40, 40, 0.2);
+}
+
+/* Bento card specific styling */
+.bento-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.75rem;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bento-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1.75rem;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.05));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.bento-card:hover::before {
+  background: linear-gradient(135deg, rgba(198, 40, 40, 0.6), rgba(245, 184, 0, 0.4));
+}
+
+/* Ambient glowing background orbs */
+.ambient-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(100px);
+  pointer-events: none;
+  opacity: 0.15;
+  z-index: 0;
+  transition: all 1s ease-in-out;
+}
+
+@keyframes orb-float-1 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate(20px, -25px) scale(1.08);
+  }
+}
+
+@keyframes orb-float-2 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate(-25px, 20px) scale(0.92);
+  }
+}
+
+.animate-orb-1 {
+  animation: orb-float-1 8s ease-in-out infinite;
+}
+
+.animate-orb-2 {
+  animation: orb-float-2 10s ease-in-out infinite;
 }

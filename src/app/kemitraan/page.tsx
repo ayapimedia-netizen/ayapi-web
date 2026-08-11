@@ -1,9 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { addPartnershipLead } from "@/app/actions";
+
+import {
+  addPartnershipLead,
+  getPartnershipPackages,
+  getFaqs,
+  getAllSiteSettings,
+  PartnershipPackage,
+  FAQItem,
+} from "@/app/actions";
+
 
 type PackageDetail = {
   id: "express" | "mini" | "premium";
@@ -82,17 +91,37 @@ type Step = {
   desc: string;
 };
 
-type FAQItem = {
-  question: string;
-  answer: string;
-};
 
 export default function Kemitraan() {
   const [selectedPackage, setSelectedPackage] = useState<"express" | "mini" | "premium">("express");
 
+  // Dynamic DB States
+  const [pkgList, setPkgList] = useState<PartnershipPackage[]>([]);
+  const [faqList, setFaqList] = useState<FAQItem[]>([]);
+  const [siteSettings, setSiteSettings] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const loadDynamicData = async () => {
+      try {
+        const [pkgs, faqsData, settingsData] = await Promise.all([
+          getPartnershipPackages(),
+          getFaqs(),
+          getAllSiteSettings(),
+        ]);
+        if (pkgs && pkgs.length > 0) setPkgList(pkgs);
+        if (faqsData && faqsData.length > 0) setFaqList(faqsData);
+        if (settingsData) setSiteSettings(settingsData);
+      } catch (err) {
+        console.error("Gagal memuat data kemitraan:", err);
+      }
+    };
+    loadDynamicData();
+  }, []);
+
   // Calculator States
   const [dailySales, setDailySales] = useState(100);
   const [avgPrice, setAvgPrice] = useState(25000);
+
 
   // Custom Operational Cost States
   const [isCustomOps, setIsCustomOps] = useState(false);
@@ -107,6 +136,7 @@ export default function Kemitraan() {
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [downloadName, setDownloadName] = useState("");
   const [downloadPhone, setDownloadPhone] = useState("");
+  const [isDownloadSubmitted, setIsDownloadSubmitted] = useState(false);
 
   const handleSelectPackage = (pkg: "express" | "mini" | "premium") => {
     setSelectedPackage(pkg);
@@ -127,7 +157,6 @@ export default function Kemitraan() {
       setCustomUtilities(5000000);
     }
     
-    // Scroll smoothly to the calculator section
     const calcSection = document.getElementById("roi-calculator");
     if (calcSection) {
       calcSection.scrollIntoView({ behavior: "smooth" });
@@ -138,6 +167,35 @@ export default function Kemitraan() {
     const cleanPhone = phone.replace(/[\s\-()]/g, "");
     const phoneRegex = /^(\+62|62|0)8[0-9]{7,12}$/;
     return phoneRegex.test(cleanPhone);
+  };
+
+  const openDownloadModal = () => {
+    setIsDownloadSubmitted(false);
+    setDownloadName("");
+    setDownloadPhone("");
+    setIsDownloadModalOpen(true);
+  };
+
+  const triggerPdfDownload = () => {
+    const link = document.createElement("a");
+    link.href = "/proposal-kemitraan-ayapi.pdf";
+    link.download = "Proposal-Kemitraan-Ayapi.pdf";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const triggerWhatsAppChat = () => {
+    const waNumber = siteSettings.wa_number || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "6287777652032";
+    const messageTemplate =
+      `Halo Tim Kemitraan Ayapi!\n` +
+      `Saya baru saja mendaftar untuk mengunduh proposal kemitraan via website.\n\n` +
+      `*Nama:* ${downloadName}\n` +
+      `*No. HP/WA:* ${downloadPhone}\n\n` +
+      `Mohon info lebih lanjut ya. Terima kasih!`;
+
+    const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(messageTemplate)}`;
+    window.open(waUrl, "_blank");
   };
 
   const handleDownloadSubmit = async (e: React.FormEvent) => {
@@ -152,7 +210,6 @@ export default function Kemitraan() {
       return;
     }
 
-    // Save lead to database
     try {
       await addPartnershipLead({
         name: downloadName.trim(),
@@ -162,43 +219,24 @@ export default function Kemitraan() {
       console.error("Gagal menyimpan prospek ke database:", dbErr);
     }
 
-    // Trigger download
-    const link = document.createElement("a");
-    link.href = "/proposal-kemitraan-ayapi.pdf";
-    link.download = "Proposal-Kemitraan-Ayapi.pdf";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    // Notify CS/Owner via WhatsApp
-    const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "6287777652032";
-    const messageTemplate =
-      `Halo Tim Kemitraan Ayapi!\n` +
-      `Saya baru saja mengunduh proposal kemitraan via website.\n\n` +
-      `*Nama:* ${downloadName}\n` +
-      `*No. HP/WA:* ${downloadPhone}\n\n` +
-      `Mohon info lebih lanjut ya. Terima kasih!`;
-
-    const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(messageTemplate)}`;
-    window.open(waUrl, "_blank");
-
-    // Reset
-    setIsDownloadModalOpen(false);
-    setDownloadName("");
-    setDownloadPhone("");
+    setIsDownloadSubmitted(true);
   };
 
   // Financial Constants
-  const initialInvestment =
-    selectedPackage === "express" ? 50000000 :
-    selectedPackage === "mini" ? 150000000 : 250000000;
+  const activePackagesList = pkgList.length > 0 ? pkgList : packages;
+
+  const activeSelectedPkgObj = activePackagesList.find((p: any) => (p.package_key || p.id) === selectedPackage) || activePackagesList[0];
+
+  const initialInvestment = activeSelectedPkgObj ? ((activeSelectedPkgObj as any).price_value || (activeSelectedPkgObj as any).priceValue || 50000000) : 50000000;
+
 
   const fixedOpsCost = isCustomOps
     ? customRent + customSalaries + customUtilities
     : selectedPackage === "express" ? 6000000 :
       selectedPackage === "mini" ? 15000000 : 25000000;
 
-  const cogsPercent = 0.55; // 55% HPP
+  const rawCogsVal = siteSettings.roi_cogs_percent ? parseFloat(siteSettings.roi_cogs_percent) : 55;
+  const cogsPercent = rawCogsVal / 100;
 
   // Financial Calculations
   const monthlyRevenue = dailySales * avgPrice * 30;
@@ -207,6 +245,11 @@ export default function Kemitraan() {
   const netProfit = Math.max(0, grossProfit - fixedOpsCost);
 
   const roiMonths = netProfit > 0 ? (initialInvestment / netProfit).toFixed(1) : "N/A";
+
+  const cogsPercentage = Math.round(rawCogsVal);
+  const opsPercentage = Math.min(100 - cogsPercentage, Math.round((fixedOpsCost / monthlyRevenue) * 100));
+  const netProfitPercentage = Math.max(0, 100 - cogsPercentage - opsPercentage);
+
 
   const benefits: Benefit[] = [
     {
@@ -293,9 +336,9 @@ export default function Kemitraan() {
   };
 
   return (
-    <div className="w-full bg-white">
+    <div className="w-full bg-white bg-grid-pattern-light">
       {/* Intro Hero Section */}
-      <section className="py-16 md:py-24 bg-gray-50 border-b border-gray-100">
+      <section className="py-16 md:py-24 bg-gray-50 border-b border-gray-100 bg-grid-pattern">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <span className="bg-brand-red/10 text-brand-red font-bold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full inline-block mb-3">
             Peluang Investasi Kemitraan
@@ -322,7 +365,7 @@ export default function Kemitraan() {
             {benefits.map((benefit, index) => (
               <div
                 key={index}
-                className="bg-white p-8 rounded-3xl border border-gray-100 hover:shadow-md transition-shadow duration-300 flex flex-col space-y-4"
+                className="bg-white p-8 rounded-3xl border border-gray-200/60 shadow-premium hover:shadow-premium-hover hover-scale-premium transition-all duration-300 flex flex-col space-y-4"
               >
                 <div className="p-3.5 bg-brand-red/5 rounded-2xl self-start">
                   {benefit.icon}
@@ -336,7 +379,7 @@ export default function Kemitraan() {
       </section>
 
       {/* Pilihan Paket Kemitraan */}
-      <section className="py-16 md:py-24 bg-gray-50/50 border-t border-gray-100">
+      <section className="py-16 md:py-24 bg-gray-50/50 border-t border-gray-100 bg-grid-pattern-light">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="bg-brand-red/10 text-brand-red font-bold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full inline-block mb-3">
@@ -352,24 +395,28 @@ export default function Kemitraan() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10">
-            {packages.map((pkg) => {
-              const isPopular = pkg.id === "mini";
-              const isSelected = selectedPackage === pkg.id;
+            {activePackagesList.map((pkg: any) => {
+              const pKey = pkg.package_key || pkg.id;
+              const isPopular = pKey === "mini" || pkg.badge === "Terpopuler";
+              const isSelected = selectedPackage === pKey;
+              const priceText = pkg.price_text || pkg.priceText || "";
+
               return (
                 <div
-                  key={pkg.id}
-                  className={`bg-white rounded-3xl border transition-all duration-300 flex flex-col relative overflow-hidden group shadow-sm hover:shadow-xl ${
-                    isPopular ? "border-brand-red/40 ring-1 ring-brand-red/35" : "border-gray-100"
+                  key={pkg.id || pKey}
+                  className={`bg-white rounded-3xl border transition-all duration-300 flex flex-col relative overflow-hidden group shadow-premium hover:shadow-premium-hover ${
+                    isPopular ? "border-brand-red/40 ring-1 ring-brand-red/35" : "border-gray-200/80"
                   } ${isSelected ? "ring-2 ring-brand-red border-transparent" : ""}`}
                 >
-                  {isPopular && (
+                  {(isPopular || pkg.badge) && (
                     <div className="absolute top-4 right-4 bg-brand-red text-white text-[10px] uppercase font-black tracking-widest px-3 py-1 rounded-full z-10 shadow-sm animate-pulse">
-                      Terpopuler
+                      {pkg.badge || "Terpopuler"}
                     </div>
                   )}
+
                   
                   {/* Mockup Image */}
-                  <div className="relative h-60 w-full overflow-hidden bg-gray-50">
+                  <div className="relative h-60 w-full overflow-hidden bg-gray-50 border-b border-gray-100">
                     <Image
                       src={pkg.image}
                       alt={pkg.name}
@@ -388,9 +435,10 @@ export default function Kemitraan() {
                         {pkg.name}
                       </h3>
                       <div className="flex items-baseline mt-1 text-brand-red">
-                        <span className="text-3xl font-black tracking-tight">{pkg.priceText.replace("*", "")}</span>
+                        <span className="text-3xl font-black tracking-tight">{priceText.replace("*", "")}</span>
                         <span className="text-xs font-semibold text-gray-400 ml-1">* Investasi</span>
                       </div>
+
                     </div>
 
                     <p className="text-gray-500 text-xs md:text-sm leading-relaxed mb-6">
@@ -404,7 +452,8 @@ export default function Kemitraan() {
                     </h4>
 
                     <ul className="space-y-2.5 mb-8 flex-grow">
-                      {pkg.inclusions.map((inc, i) => (
+                      {(pkg.inclusions || []).map((inc: string, i: number) => (
+
                         <li key={i} className="flex items-start text-xs text-gray-600 gap-2.5">
                           <span className="p-0.5 bg-green-50 rounded-full shrink-0 text-green-600 mt-0.5">
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -417,7 +466,7 @@ export default function Kemitraan() {
                     </ul>
 
                     <button
-                      onClick={() => handleSelectPackage(pkg.id)}
+                      onClick={() => handleSelectPackage((pkg.package_key || (pkg as any).id) as any)}
                       className={`w-full py-4 rounded-xl text-xs uppercase font-black tracking-widest transition-all duration-200 cursor-pointer shadow-sm hover:shadow ${
                         isSelected
                           ? "bg-brand-dark hover:bg-black text-white"
@@ -435,7 +484,8 @@ export default function Kemitraan() {
       </section>
 
       {/* Perbandingan Franchise Section */}
-      <section className="py-16 md:py-24 bg-white border-t border-gray-100">
+
+      <section className="py-16 md:py-24 bg-white border-t border-gray-100 bg-grid-pattern">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
             <span className="bg-brand-red/10 text-brand-red font-bold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full inline-block mb-3">
@@ -450,20 +500,20 @@ export default function Kemitraan() {
             </p>
           </div>
 
-          <div className="max-w-4xl mx-auto overflow-hidden rounded-3xl border border-gray-200/80 shadow-sm bg-white">
+          <div className="max-w-4xl mx-auto overflow-hidden rounded-3xl border border-gray-200/80 shadow-premium bg-white">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-brand-dark text-white text-xs sm:text-sm font-bold">
                     <th className="p-4 sm:p-5 w-1/3">Fitur / Keunggulan</th>
-                    <th className="p-4 sm:p-5 bg-brand-red text-center w-1/3">AYAPI Krispi Bakar</th>
+                    <th className="p-4 sm:p-5 bg-brand-red text-center w-1/3 text-brand-yellow">AYAPI Krispi Bakar</th>
                     <th className="p-4 sm:p-5 text-center text-gray-300 w-1/3">Franchise Ayam Lain</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-xs sm:text-sm text-gray-700">
                   <tr className="hover:bg-gray-50/50 transition-colors">
                     <td className="p-4 sm:p-5 font-bold text-brand-dark">Royalty Fee Bulanan</td>
-                    <td className="p-4 sm:p-5 text-center font-black text-green-600 bg-brand-red/5">
+                    <td className="p-4 sm:p-5 text-center font-black text-green-700 bg-green-50/20">
                       0% (100% Laba Milik Anda)
                     </td>
                     <td className="p-4 sm:p-5 text-center text-gray-500">
@@ -508,7 +558,7 @@ export default function Kemitraan() {
                   </tr>
                   <tr className="hover:bg-gray-50/50 transition-colors">
                     <td className="p-4 sm:p-5 font-bold text-brand-dark">Estimasi Balik Modal (ROI)</td>
-                    <td className="p-4 sm:p-5 text-center font-black text-green-600 bg-brand-red/5">
+                    <td className="p-4 sm:p-5 text-center font-black text-green-700 bg-green-50/20">
                       Cepat (Rata-rata &lt; 6 Bulan)
                     </td>
                     <td className="p-4 sm:p-5 text-center text-gray-500">
@@ -523,7 +573,7 @@ export default function Kemitraan() {
       </section>
 
       {/* INTERACTIVE FINANCIAL ROI SIMULATOR SECTION */}
-      <section id="roi-calculator" className="py-16 md:py-24 bg-brand-light border-t border-b border-gray-100">
+      <section id="roi-calculator" className="py-16 md:py-24 bg-white border-t border-b border-gray-100 bg-grid-pattern-light">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
@@ -537,7 +587,7 @@ export default function Kemitraan() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start max-w-6xl mx-auto">
             {/* Left: Input Sliders */}
-            <div className="lg:col-span-5 bg-white p-8 rounded-3xl border border-gray-200/60 shadow-sm space-y-8">
+            <div className="lg:col-span-5 bg-white p-8 rounded-3xl border border-gray-200/60 shadow-premium space-y-8">
               {/* Package Selector Tabs */}
               <div className="space-y-3">
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">
@@ -720,41 +770,79 @@ export default function Kemitraan() {
             </div>
 
             {/* Right: Results Dashboard */}
-            <div className="lg:col-span-7 bg-brand-dark text-white p-8 rounded-3xl shadow-xl space-y-8 relative overflow-hidden">
-              {/* Background Glow */}
-              <div className="absolute top-0 right-0 w-48 h-48 bg-brand-red/10 rounded-full blur-3xl -z-10"></div>
+            <div className="lg:col-span-7 bg-white text-gray-900 p-8 rounded-3xl shadow-2xl border border-gray-200/90 space-y-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-brand-red/5 rounded-full blur-3xl -z-10"></div>
 
-              <h3 className="font-bold text-lg border-b border-white/10 pb-3 flex items-center gap-2">
-                <svg className="w-5 h-5 text-brand-yellow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <h3 className="font-black text-lg border-b border-gray-100 pb-3 flex items-center gap-2 text-gray-900">
+                <svg className="w-5 h-5 text-brand-red" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
                 </svg>
                 Proyeksi Keuangan Bulanan
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {/* Gross Income Card */}
-                <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-1.5">
-                  <span className="text-xs text-gray-400 font-medium">Pendapatan Kotor Bulanan</span>
-                  <p className="text-xl md:text-2xl font-extrabold text-white">{formatCurrency(monthlyRevenue)}</p>
+                <div className="bg-gray-50 border border-gray-200 p-5 rounded-2xl space-y-1.5">
+                  <span className="text-xs text-gray-600 font-bold">Pendapatan Kotor Bulanan</span>
+                  <p className="text-xl md:text-2xl font-black text-gray-900">{formatCurrency(monthlyRevenue)}</p>
                 </div>
 
-                {/* COGS (HPP) Card */}
-                <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-1.5">
-                  <span className="text-xs text-gray-400 font-medium">Estimasi HPP Bahan Baku (55%)</span>
-                  <p className="text-xl md:text-2xl font-extrabold text-red-300">{formatCurrency(cogsCost)}</p>
+                <div className="bg-gray-50 border border-gray-200 p-5 rounded-2xl space-y-1.5">
+                  <span className="text-xs text-gray-600 font-bold">Estimasi HPP Bahan Baku (55%)</span>
+                  <p className="text-xl md:text-2xl font-black text-brand-red">{formatCurrency(cogsCost)}</p>
                 </div>
 
-                {/* Net Income Card */}
-                <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-1.5 sm:col-span-2">
-                  <span className="text-xs text-brand-yellow font-bold uppercase tracking-wider">Estimasi Laba Bersih Bulanan (Milik Anda)</span>
-                  <p className="text-3xl md:text-4xl font-black text-brand-yellow">{formatCurrency(netProfit)}</p>
-                  <p className="text-[10px] text-gray-400 leading-normal pt-1">
+                <div className="bg-brand-red/5 border border-brand-red/20 p-5 rounded-2xl space-y-1.5 sm:col-span-2">
+                  <span className="text-xs text-brand-red font-black uppercase tracking-wider">Estimasi Laba Bersih Bulanan (Milik Anda)</span>
+                  <p className="text-3xl md:text-4xl font-black text-brand-red">{formatCurrency(netProfit)}</p>
+                  <p className="text-[10px] text-gray-600 font-medium leading-normal pt-1">
                     *Laba Bersih sudah dikurangi biaya operasional bulanan (biaya sewa, gaji staf, utilitas listrik/air).
                   </p>
                 </div>
               </div>
 
-              {/* Payback period indicator */}
+              {/* Visual Profit Breakdown Bar */}
+              <div className="space-y-3 pt-2 pb-1 border-t border-white/10">
+                <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-brand-yellow">Alokasi Pendapatan Bulanan:</h4>
+                
+                {/* Stacked Progress Bar */}
+                <div className="w-full h-4 bg-white/10 rounded-full overflow-hidden flex shadow-inner">
+                  {/* COGS Segment */}
+                  <div
+                    style={{ width: `${cogsPercentage}%` }}
+                    className="h-full bg-red-500/80 transition-all duration-500 ease-out"
+                    title={`Bahan Baku: ${cogsPercentage}%`}
+                  />
+                  {/* Operations Cost Segment */}
+                  <div
+                    style={{ width: `${opsPercentage}%` }}
+                    className="h-full bg-amber-500/80 transition-all duration-500 ease-out"
+                    title={`Operasional: ${opsPercentage}%`}
+                  />
+                  {/* Net Profit Segment */}
+                  <div
+                    style={{ width: `${netProfitPercentage}%` }}
+                    className="h-full bg-emerald-500/85 transition-all duration-500 ease-out"
+                    title={`Laba Bersih: ${netProfitPercentage}%`}
+                  />
+                </div>
+
+                {/* Legend Indicators */}
+                <div className="flex flex-wrap gap-x-4 gap-y-2 text-[10px] pt-1">
+                  <div className="flex items-center gap-1.5 text-gray-300">
+                    <span className="w-2 h-2 rounded bg-red-500/80 inline-block"></span>
+                    <span>Bahan Baku ({cogsPercentage}%)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-gray-300">
+                    <span className="w-2 h-2 rounded bg-amber-500/80 inline-block"></span>
+                    <span>Operasional ({opsPercentage}%)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-gray-300">
+                    <span className="w-2 h-2 rounded bg-emerald-500/85 inline-block"></span>
+                    <span className="font-bold text-emerald-400">Laba Bersih ({netProfitPercentage}%)</span>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-brand-red/20 border border-brand-red/30 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="space-y-1 text-center sm:text-left">
                   <h4 className="font-extrabold text-base text-white">Lama Balik Modal (ROI)</h4>
@@ -771,7 +859,7 @@ export default function Kemitraan() {
             {/* Download Pitch Deck Button */}
             <div className="lg:col-span-12 text-center pt-6">
               <button
-                onClick={() => setIsDownloadModalOpen(true)}
+                onClick={openDownloadModal}
                 className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-8 py-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 text-xs sm:text-sm cursor-pointer inline-flex items-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -785,7 +873,7 @@ export default function Kemitraan() {
       </section>
 
       {/* Step by Step Guide */}
-      <section className="py-16 bg-white">
+      <section className="py-16 bg-white bg-grid-pattern">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
             <h2 className="text-3xl font-extrabold text-brand-dark mb-2">Langkah Mudah Bergabung</h2>
@@ -794,11 +882,14 @@ export default function Kemitraan() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {steps.map((item, index) => (
-              <div key={index} className="bg-gray-50 p-6 rounded-2xl border border-gray-100 relative">
-                <span className="text-5xl font-extrabold text-brand-red/10 absolute top-4 right-6 select-none">
+              <div 
+                key={index} 
+                className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-premium hover:shadow-premium-hover hover-scale-premium relative transition-all duration-300 group"
+              >
+                <span className="text-5xl font-extrabold text-brand-red/10 absolute top-4 right-6 select-none group-hover:text-brand-red/20 group-hover:scale-105 transition-all duration-300">
                   {item.step}
                 </span>
-                <h3 className="text-lg font-bold text-brand-dark mb-2 mt-4">{item.title}</h3>
+                <h3 className="text-lg font-bold text-brand-dark mb-2 mt-4 group-hover:text-brand-red transition-colors duration-300">{item.title}</h3>
                 <p className="text-gray-500 text-xs leading-relaxed">{item.desc}</p>
               </div>
             ))}
@@ -807,7 +898,7 @@ export default function Kemitraan() {
       </section>
 
       {/* FAQ SECTION (ACCORDION) */}
-      <section className="py-16 md:py-24 bg-gray-50 border-t border-b border-gray-100">
+      <section className="py-16 md:py-24 bg-gray-50 border-t border-b border-gray-100 bg-grid-pattern-light">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
             <span className="text-brand-red font-bold text-xs uppercase tracking-wider">Tanya Jawab Kemitraan</span>
@@ -816,12 +907,13 @@ export default function Kemitraan() {
           </div>
 
           <div className="space-y-4">
-            {faqs.map((faq, index) => {
+            {(faqList.length > 0 ? faqList : faqs).map((faq, index) => {
+
               const isOpen = activeFAQIndex === index;
               return (
                 <div
                   key={index}
-                  className="bg-white rounded-2xl border border-gray-200/60 overflow-hidden shadow-sm transition-all duration-300"
+                  className="bg-white rounded-2xl border border-gray-200/60 overflow-hidden shadow-premium hover:border-brand-red/10 transition-all duration-300"
                 >
                   <button
                     onClick={() => toggleFAQ(index)}
@@ -836,7 +928,7 @@ export default function Kemitraan() {
                   </button>
 
                   <div
-                    className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "max-h-[300px] border-t border-gray-100" : "max-h-0"
+                    className={`transition-all duration-350 ease-in-out overflow-hidden ${isOpen ? "max-h-[300px] border-t border-gray-100" : "max-h-0"
                       }`}
                   >
                     <p className="p-6 text-gray-500 text-xs md:text-sm leading-relaxed bg-gray-50/50">
@@ -851,8 +943,11 @@ export default function Kemitraan() {
       </section>
 
       {/* Red Section for Emphasis with CTA */}
-      <section className="bg-brand-red text-white py-16 md:py-24">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6 md:space-y-8">
+      <section className="bg-brand-red text-white py-16 md:py-24 relative overflow-hidden bg-gradient-to-br from-[#8d1c1c] via-brand-red to-[#a61e1e]">
+        <div className="absolute -top-24 -left-24 w-72 h-72 bg-brand-yellow/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-black/15 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6 md:space-y-8 relative z-10">
           <span className="bg-white/10 text-white font-bold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full inline-block">
             Mulai Bisnis Suksesmu
           </span>
@@ -865,7 +960,7 @@ export default function Kemitraan() {
           <div className="pt-2">
             <Link
               href="/kontak"
-              className="bg-brand-yellow hover:bg-[#e0a800] text-black font-extrabold uppercase tracking-widest px-10 py-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 inline-block text-sm"
+              className="bg-brand-yellow hover:bg-[#e0a800] text-black font-extrabold uppercase tracking-widest px-10 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 inline-block text-sm"
             >
               Gabung Sekarang
             </Link>
@@ -882,7 +977,6 @@ export default function Kemitraan() {
           ></div>
 
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full z-10 shadow-2xl border border-gray-100 relative animate-fade-in space-y-6">
-            {/* Close Button */}
             <button
               onClick={() => setIsDownloadModalOpen(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-brand-dark p-1 rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
@@ -892,56 +986,96 @@ export default function Kemitraan() {
               </svg>
             </button>
 
-            <div className="text-center space-y-2">
-              <div className="w-12 h-12 bg-brand-red/10 text-brand-red rounded-full flex items-center justify-center mx-auto">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="font-extrabold text-lg text-brand-dark">Unduh Proposal Franchise</h3>
-              <p className="text-xs text-gray-500 leading-relaxed max-w-xs mx-auto">
-                Silakan lengkapi formulir singkat di bawah untuk langsung mengunduh berkas presentasi kemitraan resmi Ayapi (PDF).
-              </p>
-            </div>
+            {isDownloadSubmitted ? (
+              <div className="text-center space-y-6 py-4 animate-fade-in">
+                <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-extrabold text-lg text-brand-dark">Pendaftaran Berhasil!</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed max-w-xs mx-auto">
+                    Data Anda telah terdaftar sebagai calon mitra. Silakan pilih langkah selanjutnya di bawah ini:
+                  </p>
+                </div>
+                
+                <div className="space-y-3 pt-2">
+                  <button
+                    onClick={triggerPdfDownload}
+                    className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest py-4 rounded-xl text-xs transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Unduh Proposal (PDF)
+                  </button>
 
-            <form onSubmit={handleDownloadSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="downloadName" className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">
-                  Nama Lengkap *
-                </label>
-                <input
-                  type="text"
-                  id="downloadName"
-                  required
-                  value={downloadName}
-                  onChange={(e) => setDownloadName(e.target.value)}
-                  placeholder="Contoh: Budi Santoso"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red transition-all"
-                />
+                  <button
+                    onClick={triggerWhatsAppChat}
+                    className="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white font-extrabold uppercase tracking-widest py-4 rounded-xl text-xs transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436.002 9.858-4.384 9.86-9.778.002-2.613-1.015-5.07-2.861-6.918C16.626 2.062 14.17 1.043 11.56 1.043c-5.443 0-9.865 4.386-9.867 9.782-.001 1.77.476 3.498 1.38 5.061L1.96 21.05l5.244-1.378zm11.385-6.85c-.3-.15-1.77-.874-2.043-.974-.275-.1-.475-.15-.675.15-.2.3-.775.975-.95 1.174-.175.2-.35.225-.65.075-1.205-.6-2.015-1.112-2.823-2.507-.213-.368-.213-.7-.076-.875.124-.15.275-.325.412-.49.137-.162.18-.275.273-.45.093-.188.046-.35-.022-.5-.069-.15-.675-1.625-.925-2.225-.244-.588-.492-.51-.675-.52-.172-.007-.369-.007-.565-.007-.196 0-.517.074-.788.374-.27.3-1.03 1.01-1.03 2.46s1.055 2.85 1.202 3.05c.148.2 2.077 3.17 5.034 4.45.703.303 1.25.485 1.678.62.707.224 1.35.193 1.86.117.567-.085 1.77-.724 2.02-1.41.25-.688.25-1.275.175-1.41-.075-.137-.275-.212-.575-.362z" />
+                    </svg>
+                    Tanya via WhatsApp
+                  </button>
+                </div>
               </div>
+            ) : (
+              <>
+                <div className="text-center space-y-2">
+                  <div className="w-12 h-12 bg-brand-red/10 text-brand-red rounded-full flex items-center justify-center mx-auto">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="font-extrabold text-lg text-brand-dark">Unduh Proposal Franchise</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed max-w-xs mx-auto">
+                    Silakan lengkapi formulir singkat di bawah untuk langsung mengunduh berkas presentasi kemitraan resmi Ayapi (PDF).
+                  </p>
+                </div>
 
-              <div>
-                <label htmlFor="downloadPhone" className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">
-                  Nomor HP / WhatsApp *
-                </label>
-                <input
-                  type="tel"
-                  id="downloadPhone"
-                  required
-                  value={downloadPhone}
-                  onChange={(e) => setDownloadPhone(e.target.value)}
-                  placeholder="Contoh: 0812XXXXXXXX"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red transition-all"
-                />
-              </div>
+                <form onSubmit={handleDownloadSubmit} className="space-y-4">
+                  <div>
+                    <label htmlFor="downloadName" className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">
+                      Nama Lengkap *
+                    </label>
+                    <input
+                      type="text"
+                      id="downloadName"
+                      required
+                      value={downloadName}
+                      onChange={(e) => setDownloadName(e.target.value)}
+                      placeholder="Contoh: Budi Santoso"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red transition-all"
+                    />
+                  </div>
 
-              <button
-                type="submit"
-                className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest py-3.5 rounded-xl text-xs transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer"
-              >
-                Kirim & Dapatkan PDF
-              </button>
-            </form>
+                  <div>
+                    <label htmlFor="downloadPhone" className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">
+                      Nomor HP / WhatsApp *
+                    </label>
+                    <input
+                      type="tel"
+                      id="downloadPhone"
+                      required
+                      value={downloadPhone}
+                      onChange={(e) => setDownloadPhone(e.target.value)}
+                      placeholder="Contoh: 0812XXXXXXXX"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red transition-all"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest py-3.5 rounded-xl text-xs transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer"
+                  >
+                    Kirim & Dapatkan PDF
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}
