@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 
 export default function WhatsAppButton() {
   const pathname = usePathname();
-  const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "6287777652032"; // WhatsApp number
+  const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730"; // WhatsApp number
   const defaultMessage = encodeURIComponent("Halo Ayapi Krispi Bakar, saya ingin bertanya tentang menu / kemitraan.");
   const waUrl = `https://wa.me/${waNumber}?text=${defaultMessage}`;
 

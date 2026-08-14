@@ -271,10 +271,10 @@ ON CONFLICT (key) DO NOTHING;
 
 -- Seed Settings
 INSERT INTO public.settings (key, value) VALUES
-  ('wa_number', '6287777652032'),
-  ('wa_number_formatted', '+62 877-7765-2032'),
-  ('cs_email', 'info@ayapikrispibar.com'),
-  ('headquarter_address', 'Jl. Mawar Indah No. 12, Jakarta Selatan, Indonesia'),
+  ('wa_number', '628213444730'),
+  ('wa_number_formatted', '+62 821-3444-730'),
+  ('cs_email', 'ayapihr@gmail.com'),
+  ('headquarter_address', 'Jl. Diponegoro No.177, Dauh Puri Klod, Kec. Denpasar Bar., Kota Denpasar, Bali 80113'),
   ('instagram_url', 'https://instagram.com/ayapikrispibar'),
   ('tiktok_url', 'https://tiktok.com/@ayapikrispibar'),
   ('halal_cert_number', 'ID3111000012345'),
@@ -282,6 +282,15 @@ INSERT INTO public.settings (key, value) VALUES
   ('roi_cogs_percent', '55'),
   ('theme', 'peach')
 ON CONFLICT (key) DO NOTHING;
+
+-- Seed Partnership Packages
+INSERT INTO public.partnership_packages (package_key, name, price_text, price_value, description, badge, image, inclusions, sort_order) VALUES
+  ('express-1', 'Paket Express 1', '15 Juta*', 15000000, 'Lebih Ringkas, Tetap Menarik! Dimensi Rombong: 100 x 60 x 160 cm. Konsep praktis, hemat tempat, cocok untuk pemula dan lokasi padat lalu lintas.', 'Budget Friendly', '/express_booth_mockup.png', '["Rombong Express Ringkas (100 x 60 x 160 cm)", "Peralatan Masak & Penggorengan Lengkap", "Starter Kit Bahan Baku Awal (Ayam & Bumbu)", "Media Promosi Fisik (Banner & Menu)", "SOP Penyajian & Pelatihan Karyawan", "Terdaftar di Platform Pesan Antar Online"]'::jsonb, 1),
+  ('express-2', 'Paket Express 2', '28 Juta*', 28000000, 'Rombong Lebih Luas, Tampilan Lebih Maksimal! Dimensi Rombong: 125 x 60 x 200 cm. Kapasitas display etalase lebih luas untuk omzet harian lebih tinggi.', 'Best Value!', '/express_booth_mockup.png', '["Rombong Express Luas (125 x 60 x 200 cm)", "Peralatan Lengkap & Display Etalase Luas", "Starter Kit Bahan Baku Skala Menengah", "Media Promosi Lengkap & Branding Eksklusif", "Sistem POS Kasir & Pelatihan Komprehensif", "Support Promosi & Integrasi Ojol Delivery"]'::jsonb, 2),
+  ('resto-1', 'Paket Resto 1', '90 Juta*', 90000000, 'Resto minimalis & fungsional. Ukuran: 4 x 6 METER. Solusi ideal menghadirkan pengalaman dine-in hemat namun tetap nyaman dan estetik.', 'Resto Minimalis', '/mini_resto_mockup.png', '["Layout Outlet Minimalis & Fungsional (4 x 6 M)", "Set Peralatan Resto & Dapur Komersial Standar", "Set Meja & Kursi Dine-in Pelanggan", "Starter Kit Bahan Baku & Bumbu Rempah", "Sistem Kasir Cloud POS & Training Manajemen", "Media Promosi & Panduan Branding Resto"]'::jsonb, 3),
+  ('resto-2', 'Paket Resto 2', '135 Juta*', 135000000, 'Resto modern & lebih luas. Ukuran: 5 x 7 METER. Menampung lebih banyak pelanggan dengan atmosfer modern dan operasional yang efisien.', 'Resto Modern', '/mini_resto_mockup.png', '["Layout Outlet Modern & Luas (5 x 7 M)", "Peralatan Dapur Komersial Stainless Steel", "Kapasitas Dine-in Nyaman & Estetik", "Starter Kit Bahan Baku Skala Besar", "Sistem POS Kasir, Tablet, & SOP Lengkap", "Support Grand Opening & Marketing Sosmed"]'::jsonb, 4),
+  ('resto-3', 'Paket Resto 3', '180 Juta*', 180000000, 'Resto premium & full experience. Ukuran: 6 x 8 METER. Konsep flagship resto dengan kapasitas maksimal, interior mewah, dan pengalaman kuliner terlengkap.', 'Full Experience', '/premium_resto_mockup.png', '["Desain Interior & Renovasi Full Experience (6 x 8 M)", "Peralatan Dapur Premium Kapasitas Maksimal", "Kapasitas Dine-in Luas & Nyaman (30+ Kursi)", "Paket Bahan Baku Terlengkap", "Pendampingan Grand Opening Tim Pusat", "Kampanye Marketing & Influencer Launching"]'::jsonb, 5)
+ON CONFLICT DO NOTHING;
 
 -- Storage Bucket untuk Media Upload
 INSERT INTO storage.buckets (id, name, public) 

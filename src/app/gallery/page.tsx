@@ -7,7 +7,7 @@ import Image from "next/image";
 import { getGalleryItems, GalleryItem } from "@/app/actions";
 
 export default function Gallery() {
-  const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "6287777652032";
+  const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
   const [activeCategory, setActiveCategory] = useState<string>("Semua");
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
 

@@ -15,10 +15,14 @@ import {
 
 
 type PackageDetail = {
-  id: "express" | "mini" | "premium";
+  id: string;
+  package_key?: string;
   name: string;
   priceText: string;
   priceValue: number;
+  originalPrice?: string;
+  dimensions?: string;
+  group: "express" | "resto";
   description: string;
   badge?: string;
   image: string;
@@ -27,54 +31,108 @@ type PackageDetail = {
 
 const packages: PackageDetail[] = [
   {
-    id: "express",
-    name: "Express",
-    priceText: "50 Juta*",
-    priceValue: 50000000,
-    description: "Memulai bisnis Ayapi dengan konsep praktis menggunakan rombong. Paket ini dirancang untuk lokasi strategis seperti pinggir jalan, perumahan, atau bazar dengan fokus penjualan take away.",
+    id: "express-1",
+    package_key: "express-1",
+    name: "Paket Express 1",
+    priceText: "15 Juta*",
+    priceValue: 15000000,
+    originalPrice: "20 JUTA",
+    dimensions: "100 x 60 x 160 cm",
+    group: "express",
+    description: "Lebih Ringkas, Tetap Menarik! Dimensi Rombong: 100 x 60 x 160 cm. Konsep praktis, hemat tempat, cocok untuk pemula dan lokasi padat lalu lintas.",
+    badge: "Budget Friendly",
     image: "/express_booth_mockup.png",
     inclusions: [
-      "Rombong / Booth Express Semi-Kontainer",
+      "Rombong Express Ringkas (100 x 60 x 160 cm)",
       "Peralatan Masak & Penggorengan Lengkap",
       "Starter Kit Bahan Baku Awal (Ayam & Bumbu)",
-      "Media Promosi Fisik (Banner, X-Banner)",
-      "Sistem Kasir Digital (POS) & Pelatihan Staf",
-      "Pendaftaran Delivery Online (GoFood/GrabFood)",
+      "Media Promosi Fisik (Banner & Menu)",
+      "SOP Penyajian & Pelatihan Karyawan",
+      "Terdaftar di Platform Pesan Antar Online",
     ],
   },
   {
-    id: "mini",
-    name: "Mini Resto",
-    priceText: "150 Juta*",
-    priceValue: 150000000,
-    description: "Hadir dengan konsep outlet yang lebih rapi dan profesional, Mini Resto memungkinkan Anda melayani dine-in terbatas sekaligus take away. Sangat cocok untuk area kampus, perumahan padat, atau ruko kecil.",
-    badge: "Terpopuler",
+    id: "express-2",
+    package_key: "express-2",
+    name: "Paket Express 2",
+    priceText: "28 Juta*",
+    priceValue: 28000000,
+    originalPrice: "35 JUTA",
+    dimensions: "125 x 60 x 200 cm",
+    group: "express",
+    description: "Rombong Lebih Luas, Tampilan Lebih Maksimal! Dimensi Rombong: 125 x 60 x 200 cm. Kapasitas display etalase lebih luas untuk omzet harian lebih tinggi.",
+    badge: "Best Value!",
+    image: "/express_booth_mockup.png",
+    inclusions: [
+      "Rombong Express Luas (125 x 60 x 200 cm)",
+      "Peralatan Lengkap & Display Etalase Luas",
+      "Starter Kit Bahan Baku Skala Menengah",
+      "Media Promosi Lengkap & Branding Eksklusif",
+      "Sistem POS Kasir & Pelatihan Komprehensif",
+      "Support Promosi & Integrasi Ojol Delivery",
+    ],
+  },
+  {
+    id: "resto-1",
+    package_key: "resto-1",
+    name: "Paket Resto 1",
+    priceText: "90 Juta*",
+    priceValue: 90000000,
+    originalPrice: "100 JUTA",
+    dimensions: "4 x 6 METER",
+    group: "resto",
+    description: "Resto minimalis & fungsional. Ukuran: 4 x 6 METER. Solusi ideal menghadirkan pengalaman dine-in hemat namun tetap nyaman dan estetik.",
+    badge: "Resto Minimalis",
     image: "/mini_resto_mockup.png",
     inclusions: [
-      "Booth Kontainer / Renovasi Ruko Mini Premium",
-      "Peralatan Dapur Restoran Standar Lengkap",
-      "Meja & Kursi Pelanggan (Dine-in Terbatas)",
-      "Starter Kit Bahan Baku Skala Menengah",
-      "Sistem POS Cloud & Tablet Kasir Lengkap",
-      "Seragam Karyawan & Manual Book SOP",
-      "Marketing Launching & Support Sosial Media",
+      "Layout Outlet Minimalis & Fungsional (4 x 6 M)",
+      "Set Peralatan Resto & Dapur Komersial Standar",
+      "Set Meja & Kursi Dine-in Pelanggan",
+      "Starter Kit Bahan Baku & Bumbu Rempah",
+      "Sistem Kasir Cloud POS & Training Manajemen",
+      "Media Promosi & Panduan Branding Resto",
     ],
   },
   {
-    id: "premium",
-    name: "Premium Resto",
-    priceText: "250 Juta*",
-    priceValue: 250000000,
-    description: "Konsep restoran dengan kapasitas dine-in yang lebih luas dan tampilan yang lebih premium. Ideal untuk area strategis dengan traffic tinggi seperti pusat kota atau kawasan komersial.",
+    id: "resto-2",
+    package_key: "resto-2",
+    name: "Paket Resto 2",
+    priceText: "135 Juta*",
+    priceValue: 135000000,
+    originalPrice: "150 JUTA",
+    dimensions: "5 x 7 METER",
+    group: "resto",
+    description: "Resto modern & lebih luas. Ukuran: 5 x 7 METER. Menampung lebih banyak pelanggan dengan atmosfer modern dan operasional yang efisien.",
+    badge: "Resto Modern",
+    image: "/mini_resto_mockup.png",
+    inclusions: [
+      "Layout Outlet Modern & Luas (5 x 7 M)",
+      "Peralatan Dapur Komersial Stainless Steel",
+      "Kapasitas Dine-in Nyaman & Estetik",
+      "Starter Kit Bahan Baku Skala Besar",
+      "Sistem POS Kasir, Tablet, & SOP Lengkap",
+      "Support Grand Opening & Marketing Sosmed",
+    ],
+  },
+  {
+    id: "resto-3",
+    package_key: "resto-3",
+    name: "Paket Resto 3",
+    priceText: "180 Juta*",
+    priceValue: 180000000,
+    originalPrice: "200 JUTA",
+    dimensions: "6 x 8 METER",
+    group: "resto",
+    description: "Resto premium & full experience. Ukuran: 6 x 8 METER. Konsep flagship resto dengan kapasitas maksimal, interior mewah, dan pengalaman kuliner terlengkap.",
+    badge: "Full Experience",
     image: "/premium_resto_mockup.png",
     inclusions: [
-      "Desain Interior & Renovasi Outlet Premium Lengkap",
-      "Peralatan Dapur Komersial Stainless Steel",
-      "Kapasitas Dine-in Nyaman (Hingga 30+ Kursi)",
-      "SOP Lengkap & Pelatihan Manajemen Supervisor",
-      "Integrasi POS & Manajemen Inventori Real-time",
-      "Kampanye Grand Opening & Influencer Marketing",
-      "Pendampingan Grand Opening oleh Tim Pusat",
+      "Desain Interior & Renovasi Full Experience (6 x 8 M)",
+      "Peralatan Dapur Premium Kapasitas Maksimal",
+      "Kapasitas Dine-in Luas & Nyaman (30+ Kursi)",
+      "Paket Bahan Baku Terlengkap",
+      "Pendampingan Grand Opening Tim Pusat",
+      "Kampanye Marketing & Influencer Launching",
     ],
   },
 ];
@@ -93,7 +151,8 @@ type Step = {
 
 
 export default function Kemitraan() {
-  const [selectedPackage, setSelectedPackage] = useState<"express" | "mini" | "premium">("express");
+  const [selectedPackage, setSelectedPackage] = useState<string>("express-1");
+  const [packageCategoryFilter, setPackageCategoryFilter] = useState<"all" | "express" | "resto">("all");
 
   // Dynamic DB States
   const [pkgList, setPkgList] = useState<PartnershipPackage[]>([]);
@@ -138,23 +197,28 @@ export default function Kemitraan() {
   const [downloadPhone, setDownloadPhone] = useState("");
   const [isDownloadSubmitted, setIsDownloadSubmitted] = useState(false);
 
-  const handleSelectPackage = (pkg: "express" | "mini" | "premium") => {
-    setSelectedPackage(pkg);
-    if (pkg === "express") {
+  const handleSelectPackage = (pkgKey: string) => {
+    setSelectedPackage(pkgKey);
+    if (pkgKey.includes("express")) {
       setDailySales(100);
       setCustomRent(1500000);
       setCustomSalaries(3000000);
       setCustomUtilities(1500000);
-    } else if (pkg === "mini") {
-      setDailySales(180);
-      setCustomRent(5000000);
-      setCustomSalaries(7000000);
-      setCustomUtilities(3000000);
+    } else if (pkgKey.includes("resto-1")) {
+      setDailySales(160);
+      setCustomRent(4000000);
+      setCustomSalaries(6000000);
+      setCustomUtilities(2500000);
+    } else if (pkgKey.includes("resto-2")) {
+      setDailySales(220);
+      setCustomRent(7000000);
+      setCustomSalaries(9000000);
+      setCustomUtilities(4000000);
     } else {
-      setDailySales(260);
-      setCustomRent(10000000);
-      setCustomSalaries(10000000);
-      setCustomUtilities(5000000);
+      setDailySales(300);
+      setCustomRent(12000000);
+      setCustomSalaries(14000000);
+      setCustomUtilities(6000000);
     }
     
     const calcSection = document.getElementById("roi-calculator");
@@ -186,7 +250,7 @@ export default function Kemitraan() {
   };
 
   const triggerWhatsAppChat = () => {
-    const waNumber = siteSettings.wa_number || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "6287777652032";
+    const waNumber = siteSettings.wa_number || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
     const messageTemplate =
       `Halo Tim Kemitraan Ayapi!\n` +
       `Saya baru saja mendaftar untuk mengunduh proposal kemitraan via website.\n\n` +
@@ -253,17 +317,8 @@ export default function Kemitraan() {
 
   const benefits: Benefit[] = [
     {
-      title: "Modal Terjangkau",
-      description: "Investasi kemitraan relatif kecil (mulai dari Rp 15 Juta) dengan perhitungan return on investment (ROI) cepat, rata-rata kurang dari 6 bulan.",
-      icon: (
-        <svg className="w-8 h-8 text-brand-red" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-    },
-    {
-      title: "Permintaan Tinggi",
-      description: "Ayam krispi bakar adalah makanan pokok populer di Indonesia. Market share luas mulai dari anak-anak hingga dewasa.",
+      title: "Brand Kuat",
+      description: "Bagian dari Ayapi Krispi Bakar dengan reputasi cita rasa aroma smoky juara yang telah disukai berbagai kalangan di Indonesia.",
       icon: (
         <svg className="w-8 h-8 text-brand-red" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -271,11 +326,47 @@ export default function Kemitraan() {
       ),
     },
     {
-      title: "Sistem Teruji & Support",
-      description: "SOP operasional yang matang, pasokan bumbu rahasia pusat terpusat yang konsisten, serta dukungan marketing digital berkala gratis.",
+      title: "Training & Pendampingan",
+      description: "Pelatihan komprehensif sebelum dan sesudah grand opening untuk memastikan standar kualitas dan SOP operasional berjalan optimal.",
       icon: (
         <svg className="w-8 h-8 text-brand-red" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      ),
+    },
+    {
+      title: "Marketing Support",
+      description: "Dukungan materi promosi berkala, aset visual media sosial, dan bimbingan strategi pemasaran digital untuk meningkatkan penjualan.",
+      icon: (
+        <svg className="w-8 h-8 text-brand-red" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+        </svg>
+      ),
+    },
+    {
+      title: "Supply Chain Terjamin",
+      description: "Distribusi bahan baku dan bumbu marinasi khas terjamin ketersediaannya dengan standar kualitas rasa yang konsisten.",
+      icon: (
+        <svg className="w-8 h-8 text-brand-red" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+      ),
+    },
+    {
+      title: "After Sales Support",
+      description: "Tim kemitraan pusat siap mendampingi mitra dalam evaluasi kinerja, konsultasi operasional, dan pengembangan omzet outlet.",
+      icon: (
+        <svg className="w-8 h-8 text-brand-red" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      ),
+    },
+    {
+      title: "0% Royalty Fee",
+      description: "Tidak ada potongan bagi hasil bulanan. Seluruh keuntungan bersih dari penjualan outlet 100% menjadi milik mitra.",
+      icon: (
+        <svg className="w-8 h-8 text-brand-red" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
     },
@@ -335,6 +426,40 @@ export default function Kemitraan() {
     setActiveFAQIndex(activeFAQIndex === index ? null : index);
   };
 
+  const getPackageGroup = (pkg: any): "express" | "resto" => {
+    const key = (pkg.package_key || pkg.id || "").toLowerCase();
+    const name = (pkg.name || "").toLowerCase();
+    if (key.includes("express") || name.includes("express")) return "express";
+    return "resto";
+  };
+
+  const getPackageDimensions = (pkg: any): string => {
+    const key = (pkg.package_key || pkg.id || "").toLowerCase();
+    const name = (pkg.name || "").toLowerCase();
+    if (key.includes("express-1") || name.includes("express 1")) return "Dimensi Rombong: 100 x 60 x 160 cm";
+    if (key.includes("express-2") || name.includes("express 2")) return "Dimensi Rombong: 125 x 60 x 200 cm";
+    if (key.includes("resto-1") || name.includes("resto 1")) return "Ukuran: 4 x 6 METER";
+    if (key.includes("resto-2") || name.includes("resto 2")) return "Ukuran: 5 x 7 METER";
+    if (key.includes("resto-3") || name.includes("resto 3")) return "Ukuran: 6 x 8 METER";
+    return "";
+  };
+
+  const getPackageOriginalPrice = (pkg: any): string => {
+    const key = (pkg.package_key || pkg.id || "").toLowerCase();
+    const name = (pkg.name || "").toLowerCase();
+    if (key.includes("express-1") || name.includes("express 1")) return "20 JUTA";
+    if (key.includes("express-2") || name.includes("express 2")) return "35 JUTA";
+    if (key.includes("resto-1") || name.includes("resto 1")) return "100 JUTA";
+    if (key.includes("resto-2") || name.includes("resto 2")) return "150 JUTA";
+    if (key.includes("resto-3") || name.includes("resto 3")) return "200 JUTA";
+    return "";
+  };
+
+  const filteredPackages = activePackagesList.filter((pkg: any) => {
+    if (packageCategoryFilter === "all") return true;
+    return getPackageGroup(pkg) === packageCategoryFilter;
+  });
+
   return (
     <div className="w-full bg-white bg-grid-pattern-light">
       {/* Intro Hero Section */}
@@ -343,35 +468,38 @@ export default function Kemitraan() {
           <span className="bg-brand-red/10 text-brand-red font-bold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full inline-block mb-3">
             Peluang Investasi Kemitraan
           </span>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-brand-dark mb-4 tracking-tight">
-            Kemitraan Ayapi
+          <h1 className="text-3xl md:text-5xl font-extrabold text-brand-dark mb-4 tracking-tight">
+            Paket Kemitraan Ayapi Express & Ayapi Krispi Bakar
           </h1>
           <div className="h-1.5 w-16 bg-brand-red mx-auto rounded-full mb-6"></div>
           <p className="text-gray-600 text-base md:text-lg max-w-3xl mx-auto leading-relaxed">
-            Bergabunglah bersama kami dan miliki bisnis ayam krispi bakar yang menguntungkan, mudah dijalankan, dan didukung penuh oleh manajemen berpengalaman.
+            Mitra Anda, Sukses Bersama Ayapi! Dapatkan peluang bisnis kuliner ayam krispi bakar menguntungkan dengan sistem teruji, pasokan bahan baku berkualitas, dan dukungan penuh manajemen.
           </p>
         </div>
       </section>
 
       {/* Benefits Grid */}
-      <section className="py-16 md:py-24">
+      <section className="py-16 md:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
-            <h2 className="text-3xl font-extrabold text-brand-dark mb-2">Mengapa Memilih Ayapi?</h2>
-            <p className="text-gray-500 text-sm md:text-base">Keunggulan model bisnis franchise kemitraan kami dibandingkan yang lain.</p>
+            <span className="bg-brand-red/10 text-brand-red font-bold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full inline-block mb-3">
+              Keunggulan Kemitraan
+            </span>
+            <h2 className="text-3xl font-extrabold text-brand-dark mb-2">Mengapa Memilih AYAPI?</h2>
+            <p className="text-gray-500 text-sm md:text-base">5 Pilar utama yang membuat bisnis kemitraan Ayapi cepat berkembang dan menguntungkan.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {benefits.map((benefit, index) => (
               <div
                 key={index}
-                className="bg-white p-8 rounded-3xl border border-gray-200/60 shadow-premium hover:shadow-premium-hover hover-scale-premium transition-all duration-300 flex flex-col space-y-4"
+                className="bg-white p-7 rounded-3xl border border-gray-200/60 shadow-premium hover:shadow-premium-hover hover-scale-premium transition-all duration-300 flex flex-col space-y-3"
               >
-                <div className="p-3.5 bg-brand-red/5 rounded-2xl self-start">
+                <div className="p-3 bg-brand-red/5 rounded-2xl self-start">
                   {benefit.icon}
                 </div>
-                <h3 className="text-xl font-bold text-brand-dark">{benefit.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{benefit.description}</p>
+                <h3 className="text-lg font-extrabold text-brand-dark">{benefit.title}</h3>
+                <p className="text-gray-500 text-xs sm:text-sm leading-relaxed">{benefit.description}</p>
               </div>
             ))}
           </div>
@@ -379,9 +507,9 @@ export default function Kemitraan() {
       </section>
 
       {/* Pilihan Paket Kemitraan */}
-      <section className="py-16 md:py-24 bg-gray-50/50 border-t border-gray-100 bg-grid-pattern-light">
+      <section className="py-16 md:py-24 bg-gray-50/50 border-t border-gray-100 bg-grid-pattern-light" id="paket-investasi">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <div className="text-center max-w-3xl mx-auto mb-10">
             <span className="bg-brand-red/10 text-brand-red font-bold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full inline-block mb-3">
               Tipe & Pilihan Outlet
             </span>
@@ -390,31 +518,72 @@ export default function Kemitraan() {
             </h2>
             <div className="h-1.5 w-16 bg-brand-red mx-auto rounded-full mt-3 mb-4"></div>
             <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-              Sesuaikan skala bisnis Anda dengan berbagai model kemitraan yang kami tawarkan. Mulai dari booth praktis hingga restoran premium yang lengkap.
+              Sesuaikan model kemitraan Anda. Mulai dari Rombong Express praktis dan hemat hingga Restoran modern dengan pengalaman kuliner terlengkap.
             </p>
+
+            {/* Filter Category Tabs */}
+            <div className="flex items-center justify-center gap-2 mt-8 flex-wrap">
+              <button
+                onClick={() => setPackageCategoryFilter("all")}
+                className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  packageCategoryFilter === "all"
+                    ? "bg-brand-red text-white shadow-md shadow-brand-red/20 scale-105"
+                    : "bg-white text-gray-600 border border-gray-200 hover:border-brand-red/40 hover:text-brand-red"
+                }`}
+              >
+                Semua Paket ({activePackagesList.length})
+              </button>
+              <button
+                onClick={() => setPackageCategoryFilter("express")}
+                className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  packageCategoryFilter === "express"
+                    ? "bg-brand-red text-white shadow-md shadow-brand-red/20 scale-105"
+                    : "bg-white text-gray-600 border border-gray-200 hover:border-brand-red/40 hover:text-brand-red"
+                }`}
+              >
+                🛒 Paket Express ({activePackagesList.filter((p: any) => getPackageGroup(p) === "express").length})
+              </button>
+              <button
+                onClick={() => setPackageCategoryFilter("resto")}
+                className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  packageCategoryFilter === "resto"
+                    ? "bg-brand-red text-white shadow-md shadow-brand-red/20 scale-105"
+                    : "bg-white text-gray-600 border border-gray-200 hover:border-brand-red/40 hover:text-brand-red"
+                }`}
+              >
+                🏪 Paket Resto ({activePackagesList.filter((p: any) => getPackageGroup(p) === "resto").length})
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10">
-            {activePackagesList.map((pkg: any) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
+            {filteredPackages.map((pkg: any) => {
               const pKey = pkg.package_key || pkg.id;
-              const isPopular = pKey === "mini" || pkg.badge === "Terpopuler";
               const isSelected = selectedPackage === pKey;
               const priceText = pkg.price_text || pkg.priceText || "";
+              const originalPrice = pkg.originalPrice || getPackageOriginalPrice(pkg);
+              const dimensions = pkg.dimensions || getPackageDimensions(pkg);
+              const group = getPackageGroup(pkg);
 
               return (
                 <div
                   key={pkg.id || pKey}
                   className={`bg-white rounded-3xl border transition-all duration-300 flex flex-col relative overflow-hidden group shadow-premium hover:shadow-premium-hover ${
-                    isPopular ? "border-brand-red/40 ring-1 ring-brand-red/35" : "border-gray-200/80"
-                  } ${isSelected ? "ring-2 ring-brand-red border-transparent" : ""}`}
+                    pkg.badge ? "border-brand-red/40 ring-1 ring-brand-red/35" : "border-gray-200/80"
+                  } ${isSelected ? "ring-2 ring-brand-red border-transparent shadow-xl" : ""}`}
                 >
-                  {(isPopular || pkg.badge) && (
+                  {/* Category Pill Top Left */}
+                  <div className="absolute top-4 left-4 bg-brand-dark/80 backdrop-blur-md text-white text-[9px] uppercase font-black tracking-widest px-3 py-1 rounded-full z-10 shadow-sm border border-white/10">
+                    {group === "express" ? "PAKET EXPRESS" : "PAKET RESTO"}
+                  </div>
+
+                  {/* Badge Top Right */}
+                  {pkg.badge && (
                     <div className="absolute top-4 right-4 bg-brand-red text-white text-[10px] uppercase font-black tracking-widest px-3 py-1 rounded-full z-10 shadow-sm animate-pulse">
-                      {pkg.badge || "Terpopuler"}
+                      {pkg.badge}
                     </div>
                   )}
 
-                  
                   {/* Mockup Image */}
                   <div className="relative h-60 w-full overflow-hidden bg-gray-50 border-b border-gray-100">
                     <Image
@@ -423,9 +592,9 @@ export default function Kemitraan() {
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-500"
                       sizes="(max-w-768px) 100vw, 33vw"
-                      priority={pkg.id === "express"}
+                      priority={pKey === "express-1" || pKey === "express"}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60"></div>
                   </div>
 
                   {/* Card Content */}
@@ -434,11 +603,30 @@ export default function Kemitraan() {
                       <h3 className="text-2xl font-black text-brand-dark tracking-tight uppercase">
                         {pkg.name}
                       </h3>
-                      <div className="flex items-baseline mt-1 text-brand-red">
-                        <span className="text-3xl font-black tracking-tight">{priceText.replace("*", "")}</span>
-                        <span className="text-xs font-semibold text-gray-400 ml-1">* Investasi</span>
+
+                      {/* Pricing Block with Strikethrough */}
+                      <div className="mt-2">
+                        {originalPrice && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 line-through font-bold">{originalPrice}</span>
+                            <span className="text-[10px] bg-red-100 text-red-700 font-extrabold px-2 py-0.5 rounded-full uppercase">PROMO SPESIAL</span>
+                          </div>
+                        )}
+                        <div className="flex items-baseline text-brand-red mt-0.5">
+                          <span className="text-3xl font-black tracking-tight">{priceText.replace("*", "")}</span>
+                          <span className="text-xs font-semibold text-gray-400 ml-1.5">* Investasi</span>
+                        </div>
                       </div>
 
+                      {/* Dimension / Ukuran Badge */}
+                      {dimensions && (
+                        <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200/60 rounded-xl text-[11px] font-extrabold text-amber-900">
+                          <svg className="w-3.5 h-3.5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                          </svg>
+                          <span>{dimensions}</span>
+                        </div>
+                      )}
                     </div>
 
                     <p className="text-gray-500 text-xs md:text-sm leading-relaxed mb-6">
@@ -453,9 +641,8 @@ export default function Kemitraan() {
 
                     <ul className="space-y-2.5 mb-8 flex-grow">
                       {(pkg.inclusions || []).map((inc: string, i: number) => (
-
                         <li key={i} className="flex items-start text-xs text-gray-600 gap-2.5">
-                          <span className="p-0.5 bg-green-50 rounded-full shrink-0 text-green-600 mt-0.5">
+                          <span className="p-0.5 bg-green-50 rounded-full shrink-0 text-green-600 mt-0.5 border border-green-200">
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
@@ -466,14 +653,14 @@ export default function Kemitraan() {
                     </ul>
 
                     <button
-                      onClick={() => handleSelectPackage((pkg.package_key || (pkg as any).id) as any)}
+                      onClick={() => handleSelectPackage(pKey)}
                       className={`w-full py-4 rounded-xl text-xs uppercase font-black tracking-widest transition-all duration-200 cursor-pointer shadow-sm hover:shadow ${
                         isSelected
                           ? "bg-brand-dark hover:bg-black text-white"
                           : "bg-brand-red hover:bg-[#a01c1c] text-white"
                       }`}
                     >
-                      Saya Mau Paket {pkg.name}
+                      {isSelected ? "✓ Paket Dipilih (Hitung ROI)" : `Saya Mau ${pkg.name}`}
                     </button>
                   </div>
                 </div>

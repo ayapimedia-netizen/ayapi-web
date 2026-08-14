@@ -188,7 +188,7 @@ export default function Home() {
   return (
     <div className="w-full max-w-none flex flex-col bg-background">
       {/* Hero Slideshow Section (Full Width, Edge-to-Edge) */}
-      <section className="relative w-full max-w-none h-[540px] sm:h-[640px] md:h-[85vh] min-h-[520px] bg-[#99000B] overflow-hidden flex items-center animate-fade-in group">
+      <section className="relative w-full max-w-none min-h-[600px] sm:min-h-[660px] md:min-h-[600px] md:h-[85vh] bg-[#99000B] overflow-hidden flex items-center animate-fade-in group">
         {/* Background Slides & Foreground Content */}
         <div className="absolute inset-0 z-0">
           {heroSlides.map((slide, idx) => (
@@ -211,46 +211,46 @@ export default function Home() {
                 sizes="100vw"
               />
               {/* Perfect Balanced Luxury Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-black/15"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/25"></div>
 
               {/* Ambient Glowing Orbs inside Hero */}
               <div className="ambient-orb w-[500px] h-[500px] bg-brand-red/15 top-1/4 -left-24 animate-orb-1"></div>
               <div className="ambient-orb w-[400px] h-[400px] bg-brand-yellow/10 bottom-10 right-10 animate-orb-2"></div>
 
               {/* Slide Text Content */}
-              <div className="absolute inset-0 flex items-center pb-16 sm:pb-20 md:pb-28">
-                <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 w-full relative z-10">
-                  <div className={`max-w-2xl text-left space-y-4 sm:space-y-6 transition-all duration-1000 transform ${idx === currentHeroSlide ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+              <div className="absolute inset-0 flex items-center pt-24 pb-14 sm:pt-28 sm:pb-16 md:py-0">
+                <div className="max-w-7xl mx-auto px-5 sm:px-10 lg:px-16 w-full relative z-10">
+                  <div className={`max-w-2xl text-left space-y-3.5 sm:space-y-6 transition-all duration-1000 transform ${idx === currentHeroSlide ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
                     }`}>
 
                     {/* Badge & Floating Live Status Pill */}
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
                       {slide.badge && (
-                        <span className="bg-brand-red/90 text-white font-extrabold text-[11px] uppercase tracking-widest px-4 py-1.5 rounded-full border border-white/20 shadow-md backdrop-blur-md inline-flex items-center gap-2">
+                        <span className="bg-brand-red/90 text-white font-extrabold text-[10px] sm:text-[11px] uppercase tracking-widest px-3.5 sm:px-4 py-1 sm:py-1.5 rounded-full border border-white/20 shadow-md backdrop-blur-md inline-flex items-center gap-1.5 sm:gap-2">
                           <Flame className="w-3.5 h-3.5 text-brand-orange animate-pulse" />
                           {slide.badge}
                         </span>
                       )}
 
-                      <span className="bg-white/10 backdrop-blur-md border border-white/20 text-brand-cream text-[11px] font-extrabold px-3.5 py-1.5 rounded-full inline-flex items-center gap-1.5 shadow-md">
+                      <span className="bg-white/10 backdrop-blur-md border border-white/20 text-brand-cream text-[10px] sm:text-[11px] font-extrabold px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full inline-flex items-center gap-1.5 shadow-md">
                         <Star className="w-3.5 h-3.5 fill-brand-yellow text-brand-yellow" />
                         5.0 (500+ Review)
                       </span>
                     </div>
 
-                    <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight leading-[1.1] whitespace-pre-line drop-shadow-lg">
+                    <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tight leading-[1.15] whitespace-pre-line drop-shadow-lg">
                       {slide.title}
                     </h1>
 
-                    <p className="text-base sm:text-lg md:text-xl text-brand-cream/90 font-medium leading-relaxed max-w-xl drop-shadow">
+                    <p className="text-xs sm:text-base md:text-xl text-brand-cream/90 font-medium leading-relaxed max-w-xl drop-shadow line-clamp-3 sm:line-clamp-none">
                       {slide.sub}
                     </p>
 
-                    <div className="flex flex-col sm:flex-row gap-4 justify-start pt-3">
+                    <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 justify-start pt-1 sm:pt-3">
                       {slide.button_text && slide.button_link && (
                         <Link
                           href={slide.button_link}
-                          className="bg-brand-orange hover:bg-brand-orange/90 text-white font-extrabold uppercase tracking-wider px-8 py-4 rounded-xl shadow-xl hover:scale-105 transition-all duration-300 text-center text-xs cursor-pointer flex items-center justify-center gap-2"
+                          className="bg-brand-orange hover:bg-brand-orange/90 text-white font-extrabold uppercase tracking-wider px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl shadow-xl hover:scale-105 transition-all duration-300 text-center text-xs cursor-pointer flex items-center justify-center gap-2"
                         >
                           <Utensils className="w-4 h-4" />
                           {slide.button_text}
@@ -259,7 +259,7 @@ export default function Home() {
                       {slide.button2_text && slide.button2_link && (
                         <Link
                           href={slide.button2_link}
-                          className="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-extrabold uppercase tracking-wider px-8 py-4 rounded-xl backdrop-blur-md transition-all duration-300 text-center text-xs cursor-pointer flex items-center justify-center gap-2 hover:scale-105"
+                          className="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-extrabold uppercase tracking-wider px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl backdrop-blur-md transition-all duration-300 text-center text-xs cursor-pointer flex items-center justify-center gap-2 hover:scale-105"
                         >
                           <Building2 className="w-4 h-4" />
                           {slide.button2_text}
@@ -275,12 +275,12 @@ export default function Home() {
         </div>
 
         {/* Navigation Dot Indicators */}
-        <div className="absolute bottom-16 md:bottom-24 left-0 right-0 flex justify-center gap-2.5 z-20">
+        <div className="absolute bottom-3 sm:bottom-6 md:bottom-8 left-0 right-0 flex justify-center gap-2.5 z-20">
           {heroSlides.map((_, idx) => (
             <button
               key={idx}
               onClick={() => setCurrentHeroSlide(idx)}
-              className={`h-2.5 rounded-full transition-all duration-500 cursor-pointer ${idx === currentHeroSlide ? "bg-brand-yellow w-8 shadow-glow-amber scale-110" : "bg-white/40 hover:bg-white/80 w-2.5"
+              className={`h-2 rounded-full transition-all duration-500 cursor-pointer ${idx === currentHeroSlide ? "bg-brand-yellow w-7 shadow-glow-amber scale-110" : "bg-white/40 hover:bg-white/80 w-2"
                 }`}
               title={`Ke slide ${idx + 1}`}
             />

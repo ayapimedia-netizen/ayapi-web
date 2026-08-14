@@ -202,7 +202,7 @@ export default function Menu() {
         (orderNotes.trim() ? `*Catatan:* ${orderNotes.trim()}\n` : "") +
         `\nMohon segera diproses ya. Terima kasih!`;
 
-      const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "6287777652032";
+      const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
       const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(messageTemplate)}`;
 
       setCart([]);

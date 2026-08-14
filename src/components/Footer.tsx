@@ -21,9 +21,9 @@ export default function Footer() {
     });
   }, []);
 
-  const formattedWaNumber = siteSettings.wa_number_formatted || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER_FORMATTED || "+62 877-7765-2032";
-  const csEmail = siteSettings.cs_email || "info@ayapikrispibar.com";
-  const address = siteSettings.headquarter_address || "Jl. Mawar Indah No. 12, Jakarta Selatan, Indonesia";
+  const formattedWaNumber = siteSettings.wa_number_formatted || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER_FORMATTED || "+62 821-3444-730";
+  const csEmail = siteSettings.cs_email || "ayapihr@gmail.com";
+  const address = siteSettings.headquarter_address || "Jl. Diponegoro No.177, Dauh Puri Klod, Kec. Denpasar Bar., Kota Denpasar, Bali 80113";
 
 
   // Hide Footer on links and admin pages

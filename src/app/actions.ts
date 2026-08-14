@@ -265,14 +265,45 @@ function isSupabaseConfigured() {
    1. ADMIN AUTHENTICATION ACTIONS
    ========================================================================= */
 
+// In-memory rate limiting for login attempts
+interface LoginAttemptRecord {
+  count: number;
+  lockedUntil: number;
+}
+const loginAttemptsMap = new Map<string, LoginAttemptRecord>();
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
 export async function loginAdmin(formData: FormData) {
-  const usernameInput = formData.get("username") as string;
-  const passwordInput = formData.get("password") as string;
+  const usernameInput = (formData.get("username") as string || "").trim();
+  const passwordInput = (formData.get("password") as string || "");
+
+  // Basic length & type validation
+  if (!usernameInput || !passwordInput || usernameInput.length > 100 || passwordInput.length > 200) {
+    return { success: false, error: "Input username atau password tidak valid." };
+  }
+
+  // Enforce rate limiting key (based on username target)
+  const rateLimitKey = `login_${usernameInput.toLowerCase()}`;
+  const now = Date.now();
+  const record = loginAttemptsMap.get(rateLimitKey);
+
+  if (record && record.lockedUntil > now) {
+    const remainingMinutes = Math.ceil((record.lockedUntil - now) / (60 * 1000));
+    logger.auth("DENIED", `Login rate limit exceeded for '${usernameInput}'. Locked for ${remainingMinutes} more minutes.`);
+    return {
+      success: false,
+      error: `Terlalu banyak percobaan gagal. Akun dikunci sementara selama ${remainingMinutes} menit demi keamanan.`,
+    };
+  }
 
   const adminUser = process.env.ADMIN_USERNAME || "admin";
   const adminPass = process.env.ADMIN_PASSWORD || "m1n66A61lAA";
 
   if (usernameInput === adminUser && passwordInput === adminPass) {
+    // Reset rate limiter on successful authentication
+    loginAttemptsMap.delete(rateLimitKey);
+
     const cookieStore = await cookies();
     const timestamp = Date.now();
     const hash = getSecureSessionTokenWithTimestamp(timestamp);
@@ -288,10 +319,30 @@ export async function loginAdmin(formData: FormData) {
     return { success: true };
   }
 
-  logger.auth("DENIED", `Failed login attempt for username '${usernameInput}'`);
-  // Delay 1.5 seconds to throttle automated brute-force attacks
+  // Increment failed attempts
+  const currentAttempts = (record && record.lockedUntil <= now ? 0 : record?.count || 0) + 1;
+  const isLocked = currentAttempts >= MAX_FAILED_ATTEMPTS;
+  loginAttemptsMap.set(rateLimitKey, {
+    count: currentAttempts,
+    lockedUntil: isLocked ? now + LOCKOUT_DURATION_MS : 0,
+  });
+
+  logger.auth("DENIED", `Failed login attempt (${currentAttempts}/${MAX_FAILED_ATTEMPTS}) for username '${usernameInput}'`);
+
+  // Delay 1.5s to throttle timing attacks
   await new Promise((resolve) => setTimeout(resolve, 1500));
-  return { success: false, error: "Username atau password salah!" };
+
+  if (isLocked) {
+    return {
+      success: false,
+      error: `Terlalu banyak percobaan gagal. Akun dikunci sementara selama 15 menit demi keamanan.`,
+    };
+  }
+
+  return { 
+    success: false, 
+    error: `Username atau password salah! (${MAX_FAILED_ATTEMPTS - currentAttempts} percobaan tersisa)` 
+  };
 }
 
 export async function logoutAdmin() {
@@ -954,18 +1005,31 @@ export async function getPartnershipLeads(): Promise<PartnershipLead[]> {
 }
 
 export async function addPartnershipLead(lead: Omit<PartnershipLead, "id" | "status" | "created_at">) {
+  // Input validation & sanitization
+  const cleanName = (lead.name || "").trim().replace(/<[^>]*>?/gm, "").substring(0, 100);
+  const cleanPhone = (lead.phone || "").trim().replace(/[^0-9+\s\-()]/g, "").substring(0, 30);
+
+  if (!cleanName || cleanName.length < 2) {
+    return { success: false, error: "Nama wajib diisi minimal 2 karakter." };
+  }
+
+  const numericDigits = cleanPhone.replace(/\D/g, "");
+  if (!numericDigits || numericDigits.length < 8 || numericDigits.length > 15) {
+    return { success: false, error: "Nomor WhatsApp tidak valid (minimal 8 digit)." };
+  }
+
   if (!isSupabaseConfigured()) {
     console.warn("Supabase not configured. Lead not saved.");
-    return { success: false };
+    return { success: false, error: "Database belum terkonfigurasi." };
   }
 
   const { data, error } = await supabaseAdmin
     .from("partnership_leads")
     .insert([
       {
-        name: lead.name,
-        phone: lead.phone,
-        status: "Baru",
+        name: cleanName,
+        phone: cleanPhone,
+        status: "Baru", // Always enforce "Baru" to prevent status tampering
       },
     ])
     .select()
@@ -1333,7 +1397,7 @@ const fallbackLinks = (waNumber: string): LinkItem[] => [
 ];
 
 export async function getLinks(): Promise<LinkItem[]> {
-  const wa = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "6287777652032";
+  const wa = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
   if (!isSupabaseConfigured()) {
     return fallbackLinks(wa);
   }
@@ -1363,7 +1427,7 @@ export async function getAdminLinks(): Promise<LinkItem[]> {
   // Lazy purge expired items
   await purgeExpiredDeletedItems();
 
-  const wa = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "6287777652032";
+  const wa = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
   if (!isSupabaseConfigured()) {
     return fallbackLinks(wa);
   }
@@ -2076,10 +2140,10 @@ export async function swapTestimonialOrder(id1: string, order1: number, id2: str
 // =========================================================================
 
 const fallbackSettings: Record<string, string> = {
-  wa_number: "6287777652032",
-  wa_number_formatted: "+62 877-7765-2032",
-  cs_email: "info@ayapikrispibar.com",
-  headquarter_address: "Jl. Mawar Indah No. 12, Jakarta Selatan, Indonesia",
+  wa_number: "628213444730",
+  wa_number_formatted: "+62 821-3444-730",
+  cs_email: "ayapihr@gmail.com",
+  headquarter_address: "Jl. Diponegoro No.177, Dauh Puri Klod, Kec. Denpasar Bar., Kota Denpasar, Bali 80113",
   instagram_url: "https://instagram.com/ayapikrispibar",
   tiktok_url: "https://tiktok.com/@ayapikrispibar",
   halal_cert_number: "ID3111000012345",
@@ -2144,60 +2208,98 @@ export async function updateAllSiteSettings(settings: Record<string, string>) {
 const fallbackPackages: PartnershipPackage[] = [
   {
     id: "pkg-1",
-    package_key: "express",
-    name: "Express",
-    price_text: "50 Juta*",
-    price_value: 50000000,
-    description: "Memulai bisnis Ayapi dengan konsep praktis menggunakan rombong semi-kontainer. Sangat cocok untuk lokasi pinggir jalan, perumahan, atau area bazar.",
+    package_key: "express-1",
+    name: "Paket Express 1",
+    price_text: "15 Juta*",
+    price_value: 15000000,
+    description: "Lebih Ringkas, Tetap Menarik! Dimensi Rombong: 100 x 60 x 160 cm. Konsep praktis, hemat tempat, cocok untuk pemula dan lokasi padat lalu lintas.",
+    badge: "Budget Friendly",
     image: "/express_booth_mockup.png",
     inclusions: [
-      "Rombong / Booth Express Semi-Kontainer",
+      "Rombong Express Ringkas (100 x 60 x 160 cm)",
       "Peralatan Masak & Penggorengan Lengkap",
       "Starter Kit Bahan Baku Awal (Ayam & Bumbu)",
-      "Media Promosi Fisik (Banner, X-Banner)",
-      "Sistem Kasir Digital (POS) & Pelatihan Staf",
-      "Pendaftaran Delivery Online (GoFood/GrabFood)",
+      "Media Promosi Fisik (Banner & Menu)",
+      "SOP Penyajian & Pelatihan Karyawan",
+      "Terdaftar di Platform Pesan Antar Online",
     ],
     sort_order: 1,
   },
   {
     id: "pkg-2",
-    package_key: "mini",
-    name: "Mini Resto",
-    price_text: "150 Juta*",
-    price_value: 150000000,
-    description: "Hadir dengan konsep outlet yang lebih rapi dan profesional, Mini Resto memungkinkan Anda melayani dine-in terbatas sekaligus take away.",
-    badge: "Terpopuler",
-    image: "/mini_resto_mockup.png",
+    package_key: "express-2",
+    name: "Paket Express 2",
+    price_text: "28 Juta*",
+    price_value: 28000000,
+    description: "Rombong Lebih Luas, Tampilan Lebih Maksimal! Dimensi Rombong: 125 x 60 x 200 cm. Kapasitas display etalase lebih luas untuk omzet harian lebih tinggi.",
+    badge: "Best Value!",
+    image: "/express_booth_mockup.png",
     inclusions: [
-      "Booth Kontainer / Renovasi Ruko Mini Premium",
-      "Peralatan Dapur Restoran Standar Lengkap",
-      "Meja & Kursi Pelanggan (Dine-in Terbatas)",
+      "Rombong Express Luas (125 x 60 x 200 cm)",
+      "Peralatan Lengkap & Display Etalase Luas",
       "Starter Kit Bahan Baku Skala Menengah",
-      "Sistem POS Cloud & Tablet Kasir Lengkap",
-      "Seragam Karyawan & Manual Book SOP",
-      "Marketing Launching & Support Sosial Media",
+      "Media Promosi Lengkap & Branding Eksklusif",
+      "Sistem POS Kasir & Pelatihan Komprehensif",
+      "Support Promosi & Integrasi Ojol Delivery",
     ],
     sort_order: 2,
   },
   {
     id: "pkg-3",
-    package_key: "premium",
-    name: "Premium Resto",
-    price_text: "250 Juta*",
-    price_value: 250000000,
-    description: "Konsep restoran dengan kapasitas dine-in yang lebih luas dan tampilan yang lebih premium. Ideal untuk area strategis pusat kota.",
-    image: "/premium_resto_mockup.png",
+    package_key: "resto-1",
+    name: "Paket Resto 1",
+    price_text: "90 Juta*",
+    price_value: 90000000,
+    description: "Resto minimalis & fungsional. Ukuran: 4 x 6 METER. Solusi ideal menghadirkan pengalaman dine-in hemat namun tetap nyaman dan estetik.",
+    badge: "Resto Minimalis",
+    image: "/mini_resto_mockup.png",
     inclusions: [
-      "Desain Interior & Renovasi Outlet Premium Lengkap",
-      "Peralatan Dapur Komersial Stainless Steel",
-      "Kapasitas Dine-in Nyaman (Hingga 30+ Kursi)",
-      "SOP Lengkap & Pelatihan Manajemen Supervisor",
-      "Integrasi POS & Manajemen Inventori Real-time",
-      "Kampanye Grand Opening & Influencer Marketing",
-      "Pendampingan Grand Opening oleh Tim Pusat",
+      "Layout Outlet Minimalis & Fungsional (4 x 6 M)",
+      "Set Peralatan Resto & Dapur Komersial Standar",
+      "Set Meja & Kursi Dine-in Pelanggan",
+      "Starter Kit Bahan Baku & Bumbu Rempah",
+      "Sistem Kasir Cloud POS & Training Manajemen",
+      "Media Promosi & Panduan Branding Resto",
     ],
     sort_order: 3,
+  },
+  {
+    id: "pkg-4",
+    package_key: "resto-2",
+    name: "Paket Resto 2",
+    price_text: "135 Juta*",
+    price_value: 135000000,
+    description: "Resto modern & lebih luas. Ukuran: 5 x 7 METER. Menampung lebih banyak pelanggan dengan atmosfer modern dan operasional yang efisien.",
+    badge: "Resto Modern",
+    image: "/mini_resto_mockup.png",
+    inclusions: [
+      "Layout Outlet Modern & Luas (5 x 7 M)",
+      "Peralatan Dapur Komersial Stainless Steel",
+      "Kapasitas Dine-in Nyaman & Estetik",
+      "Starter Kit Bahan Baku Skala Besar",
+      "Sistem POS Kasir, Tablet, & SOP Lengkap",
+      "Support Grand Opening & Marketing Sosmed",
+    ],
+    sort_order: 4,
+  },
+  {
+    id: "pkg-5",
+    package_key: "resto-3",
+    name: "Paket Resto 3",
+    price_text: "180 Juta*",
+    price_value: 180000000,
+    description: "Resto premium & full experience. Ukuran: 6 x 8 METER. Konsep flagship resto dengan kapasitas maksimal, interior mewah, dan pengalaman kuliner terlengkap.",
+    badge: "Full Experience",
+    image: "/premium_resto_mockup.png",
+    inclusions: [
+      "Desain Interior & Renovasi Full Experience (6 x 8 M)",
+      "Peralatan Dapur Premium Kapasitas Maksimal",
+      "Kapasitas Dine-in Luas & Nyaman (30+ Kursi)",
+      "Paket Bahan Baku Terlengkap",
+      "Pendampingan Grand Opening Tim Pusat",
+      "Kampanye Marketing & Influencer Launching",
+    ],
+    sort_order: 5,
   },
 ];
 

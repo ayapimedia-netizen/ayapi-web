@@ -295,10 +295,10 @@ export default function AdminDashboard() {
   const [testimonialIsActive, setTestimonialIsActive] = useState(true);
 
   // Form Fields - Site Settings
-  const [settingWaNumber, setSettingWaNumber] = useState("6287777652032");
-  const [settingWaFormatted, setSettingWaFormatted] = useState("+62 877-7765-2032");
-  const [settingCsEmail, setSettingCsEmail] = useState("info@ayapikrispibar.com");
-  const [settingAddress, setSettingAddress] = useState("Jl. Mawar Indah No. 12, Jakarta Selatan, Indonesia");
+  const [settingWaNumber, setSettingWaNumber] = useState("628213444730");
+  const [settingWaFormatted, setSettingWaFormatted] = useState("+62 821-3444-730");
+  const [settingCsEmail, setSettingCsEmail] = useState("ayapihr@gmail.com");
+  const [settingAddress, setSettingAddress] = useState("Jl. Diponegoro No.177, Dauh Puri Klod, Kec. Denpasar Bar., Kota Denpasar, Bali 80113");
   const [settingInstagram, setSettingInstagram] = useState("https://instagram.com/ayapikrispibar");
   const [settingTiktok, setSettingTiktok] = useState("https://tiktok.com/@ayapikrispibar");
   const [settingHalal, setSettingHalal] = useState("ID3111000012345");
@@ -3230,10 +3230,10 @@ export default function AdminDashboard() {
                         required
                         value={settingWaNumber}
                         onChange={(e) => setSettingWaNumber(e.target.value)}
-                        placeholder="Contoh: 6287777652032"
+                        placeholder="Contoh: 628213444730"
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
                       />
-                      <span className="text-[10px] text-gray-400 mt-1 block">Format tanpa + / spasi / strip (contoh: 6287777652032).</span>
+                      <span className="text-[10px] text-gray-400 mt-1 block">Format tanpa + / spasi / strip (contoh: 628213444730).</span>
                     </div>
 
                     {/* Formatted WA */}
@@ -3246,7 +3246,7 @@ export default function AdminDashboard() {
                         required
                         value={settingWaFormatted}
                         onChange={(e) => setSettingWaFormatted(e.target.value)}
-                        placeholder="Contoh: +62 877-7765-2032"
+                        placeholder="Contoh: +62 821-3444-730"
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
                       />
                     </div>
@@ -3261,7 +3261,7 @@ export default function AdminDashboard() {
                         required
                         value={settingCsEmail}
                         onChange={(e) => setSettingCsEmail(e.target.value)}
-                        placeholder="Contoh: info@ayapikrispibar.com"
+                        placeholder="Contoh: ayapihr@gmail.com"
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
                       />
                     </div>
@@ -3276,7 +3276,7 @@ export default function AdminDashboard() {
                         required
                         value={settingAddress}
                         onChange={(e) => setSettingAddress(e.target.value)}
-                        placeholder="Alamat kantor pusat..."
+                        placeholder="Contoh: Jl. Diponegoro No.177, Dauh Puri Klod, Kec. Denpasar Bar., Kota Denpasar, Bali 80113"
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
                       />
                     </div>

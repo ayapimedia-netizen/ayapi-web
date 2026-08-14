@@ -50,10 +50,10 @@ export default function Kontak() {
     fetchData();
   }, []);
 
-  const waNumber = siteSettings.wa_number || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "6287777652032";
-  const formattedWaNumber = siteSettings.wa_number_formatted || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER_FORMATTED || "+62 877-7765-2032";
-  const csEmail = siteSettings.cs_email || "info@ayapikrispibar.com";
-  const hqAddress = siteSettings.headquarter_address || "Jl. Mawar Indah No. 12, Jakarta Selatan, Indonesia";
+  const waNumber = siteSettings.wa_number || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
+  const formattedWaNumber = siteSettings.wa_number_formatted || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER_FORMATTED || "+62 821-3444-730";
+  const csEmail = siteSettings.cs_email || "ayapihr@gmail.com";
+  const hqAddress = siteSettings.headquarter_address || "Jl. Diponegoro No.177, Dauh Puri Klod, Kec. Denpasar Bar., Kota Denpasar, Bali 80113";
 
 
   const getBranchAddress = (name: string) => {
@@ -271,7 +271,7 @@ export default function Kontak() {
                   </div>
                   <div>
                     <h3 className="font-extrabold text-brand-dark text-xs uppercase tracking-wider">Alamat Kantor Pusat</h3>
-                    <p className="text-gray-500 text-xs mt-1 leading-relaxed">Jl. Mawar Indah No. 12, Jakarta Selatan, Indonesia</p>
+                    <p className="text-gray-500 text-xs mt-1 leading-relaxed">{hqAddress}</p>
                   </div>
                 </div>
 
@@ -295,7 +295,7 @@ export default function Kontak() {
                   </div>
                   <div>
                     <h3 className="font-extrabold text-brand-dark text-xs uppercase tracking-wider">Alamat Email</h3>
-                    <p className="text-gray-500 text-xs mt-1 leading-relaxed">info@ayapikrispibar.com</p>
+                    <p className="text-gray-500 text-xs mt-1 leading-relaxed">{csEmail}</p>
                   </div>
                 </div>
               </div>
