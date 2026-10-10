@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { getMenuItems, getBranches, getCategories, MenuItem, Branch, createOrder } from "@/app/actions";
+import { getMenuItems, getBranches, getCategories, getAllSiteSettings, MenuItem, Branch, createOrder } from "@/app/actions";
 import CustomSelect from "@/components/CustomSelect";
 
 type CartItem = {
@@ -58,6 +58,7 @@ export default function Menu() {
     }
   }, [cart]);
 
+  const [orderWaNumber, setOrderWaNumber] = useState<string>("628213444730");
   const [branches, setBranches] = useState<Branch[]>([]);
 
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([
@@ -75,10 +76,11 @@ export default function Menu() {
   useEffect(() => {
     const fetchMenuAndBranches = async () => {
       try {
-        const [items, branchList, categoriesList] = await Promise.all([
+        const [items, branchList, categoriesList, settingsData] = await Promise.all([
           getMenuItems(),
           getBranches(),
           getCategories(),
+          getAllSiteSettings().catch(() => null),
         ]);
         setMenuItems(items || []);
         if (branchList.length > 0) {
@@ -87,11 +89,16 @@ export default function Menu() {
             setSelectedBranch(branchList[0].name);
           }
         }
-        if (categoriesList.length > 0) {
+        if (categoriesList && categoriesList.length > 0) {
           setCategories([
             { id: "all", name: "Semua Menu" },
             ...categoriesList.map((c) => ({ id: c.key, name: c.name })),
           ]);
+        }
+        if (settingsData?.wa_number) {
+          let clean = settingsData.wa_number.replace(/\D/g, "");
+          if (clean.startsWith("0")) clean = "62" + clean.substring(1);
+          if (clean) setOrderWaNumber(clean);
         }
       } catch (err) {
         console.error("Gagal memuat menu, cabang, dan kategori:", err);
@@ -204,8 +211,8 @@ export default function Menu() {
         (orderNotes.trim() ? `*Catatan:* ${orderNotes.trim()}\n` : "") +
         `\nMohon segera diproses ya. Terima kasih!`;
 
-      const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
-      const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(messageTemplate)}`;
+      const targetWaNumber = orderWaNumber || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
+      const waUrl = `https://wa.me/${targetWaNumber}?text=${encodeURIComponent(messageTemplate)}`;
 
       setCart([]);
       setOrderName("");
