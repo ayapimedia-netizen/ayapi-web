@@ -631,7 +631,7 @@ export default function Kontak() {
                       )}
                     </div>
                     <h3 className="font-extrabold text-brand-dark text-base">{branch.name}</h3>
-                    <p className="text-xs text-gray-500 leading-relaxed">
+                    <p className="text-xs text-gray-500 leading-relaxed text-justify">
                       {getBranchAddress(branch.name)}
                     </p>
                     <div className="text-[11px] text-gray-400 font-semibold space-y-1 pt-1">

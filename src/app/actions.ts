@@ -128,83 +128,99 @@ export type FAQItem = {
 const fallbackMenuItems: MenuItem[] = [
   {
     id: "fb-1",
-    name: "Ayapi Krisbar Original",
-    price: "Rp 22.000",
-    description: "Ayam goreng tepung krispi gurih yang dibakar dengan balutan saus manis pedas khas Ayapi.",
-    image: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=500&q=80",
-    category: "krisbar",
+    name: "Paket Krisbar Jumbo",
+    price: "Rp 28.000",
+    description: "Nasi hangat + Ayam krispi bakar porsi jumbo dengan bumbu khas legit + sambal & lalapan segar.",
+    image: "/bank-foto/foto (1).jpg",
+    category: "utama",
   },
   {
     id: "fb-2",
-    name: "Ayapi Krisbar Madu",
-    price: "Rp 24.000",
-    description: "Ayam krispi bakar berlapis madu murni manis gurih legit dengan bumbu rempah pilihan.",
-    image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=500&q=80",
-    category: "krisbar",
+    name: "Paket Krisbar Sayap",
+    price: "Rp 22.000",
+    description: "Nasi hangat + Sayap ayam krispi bakar renyah juicy + sambal pedas & lalapan.",
+    image: "/bank-foto/foto (2).jpg",
+    category: "utama",
   },
   {
     id: "fb-3",
-    name: "Ayapi Krisbar Cheese",
-    price: "Rp 25.000",
-    description: "Ayam krispi bakar lezat disiram saus keju cheddar creamy gurih yang berlimpah.",
-    image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=500&q=80",
-    category: "krisbar",
+    name: "Paket Geprek Krisbar",
+    price: "Rp 24.000",
+    description: "Nasi + Ayam krispi bakar digeprek dengan sambal cabai rawit spesial mantap.",
+    image: "/bank-foto/foto (3).jpg",
+    category: "utama",
   },
   {
     id: "fb-4",
-    name: "Paket Krisbar Hemat",
-    price: "Rp 27.000",
-    description: "Nasi putih hangat + Ayam Krisbar Original + lalapan segar (kol, timun, kemangi) + Sambal.",
-    image: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=500&q=80",
-    category: "paket",
+    name: "Ayam Krisbar Aja (Jumbo)",
+    price: "Rp 22.000",
+    description: "1 potong ayam krispi bakar bagian paha atas/dada dengan aroma bakaran smoky khas.",
+    image: "/bank-foto/foto (4).jpg",
+    category: "utama",
   },
   {
     id: "fb-5",
-    name: "Paket Krisbar Duo",
-    price: "Rp 45.000",
-    description: "Nasi hangat + 2 Ayam Krisbar Original + Es Teh manis segar + lalapan dan sambal nikmat.",
-    image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80",
-    category: "paket",
+    name: "Ayam Krisbar Aja (Sayap)",
+    price: "Rp 16.000",
+    description: "1 potong sayap ayam krispi bakar bumbu rempah nikmat meresap.",
+    image: "/bank-foto/foto (5).jpg",
+    category: "utama",
   },
   {
     id: "fb-6",
-    name: "Paket Krisbar Family",
-    price: "Rp 95.000",
-    description: "Porsi keluarga! 5 Ayam Krisbar Original + 4 Nasi putih + 4 Es Teh + sambal ekstra besar.",
-    image: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=500&q=80",
-    category: "paket",
+    name: "Kulit Krisbar",
+    price: "Rp 15.000",
+    description: "Kulit ayam renyah kriuk dibakar dengan olesan bumbu manis gurih favorit.",
+    image: "/bank-foto/foto (6).jpg",
+    category: "camilan",
   },
   {
     id: "fb-7",
-    name: "Paket Geprek Krisbar",
-    price: "Rp 25.000",
-    description: "Nasi hangat + Ayam krispi bakar yang digeprek dengan sambal korek bawang rawit merah super pedas.",
-    image: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=500&q=80",
-    category: "geprek",
+    name: "Jamur Krispi",
+    price: "Rp 12.000",
+    description: "Jamur tiram goreng tepung krispi gurih renyah cocok untuk camilan pendamping.",
+    image: "/bank-foto/foto (7).jpg",
+    category: "camilan",
   },
   {
     id: "fb-8",
-    name: "Paket Geprek Krisbar Ijo",
-    price: "Rp 26.000",
-    description: "Nasi hangat + Ayam krispi bakar digeprek dengan sambal hijau cabai ijo besar Padang segar gurih.",
-    image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80",
-    category: "geprek",
+    name: "Tahu / Tempe Krisbar",
+    price: "Rp 8.000",
+    description: "Tahu atau tempe goreng bumbu bakar khas Ayapi yang gurih nikmat.",
+    image: "/bank-foto/foto (8).jpg",
+    category: "camilan",
   },
   {
     id: "fb-9",
-    name: "Sambal Korek Bawang",
-    price: "Rp 4.000",
-    description: "Sambal bawang rawit pedas murni disiram minyak kelapa panas, cocok untuk cocolan.",
-    image: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=500&q=80",
-    category: "sambal",
+    name: "Nasi Putih",
+    price: "Rp 6.000",
+    description: "Nasi putih pulen hangat pas untuk menemani hidangan ayam bakar favorit.",
+    image: "/bank-foto/foto (9).jpg",
+    category: "camilan",
   },
   {
     id: "fb-10",
-    name: "Sambal Ijo Padang",
-    price: "Rp 4.000",
-    description: "Sambal cabai hijau muda khas Minang dengan rasa pedas lembut gurih dan aroma harum.",
-    image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=500&q=80",
-    category: "sambal",
+    name: "Es Teh Manis / Tawar",
+    price: "Rp 5.000",
+    description: "Teh segar dingin penghilang dahaga nikmat menyegarkan.",
+    image: "/bank-foto/foto (10).jpg",
+    category: "minuman",
+  },
+  {
+    id: "fb-11",
+    name: "Es Jeruk",
+    price: "Rp 7.000",
+    description: "Perasan jeruk segar alami disajikan dingin dan manis pas.",
+    image: "/bank-foto/foto (1).jpg",
+    category: "minuman",
+  },
+  {
+    id: "fb-12",
+    name: "Air Mineral",
+    price: "Rp 5.000",
+    description: "Air mineral botol dingin bersih menyegarkan.",
+    image: "/bank-foto/foto (2).jpg",
+    category: "minuman",
   },
 ];
 
@@ -339,9 +355,9 @@ export async function loginAdmin(formData: FormData) {
     };
   }
 
-  return { 
-    success: false, 
-    error: `Username atau password salah! (${MAX_FAILED_ATTEMPTS - currentAttempts} percobaan tersisa)` 
+  return {
+    success: false,
+    error: `Username atau password salah! (${MAX_FAILED_ATTEMPTS - currentAttempts} percobaan tersisa)`
   };
 }
 
@@ -356,20 +372,20 @@ export async function checkAdminSession() {
   const cookieStore = await cookies();
   const session = cookieStore.get("admin_session");
   if (!session?.value) return false;
-  
+
   const parts = session.value.split(":");
   if (parts.length !== 2) return false;
-  
+
   const [hash, timestampStr] = parts;
   const timestamp = parseInt(timestampStr, 10);
   if (isNaN(timestamp)) return false;
-  
+
   // Verify expiration (24h)
   const now = Date.now();
   if (now - timestamp > 24 * 60 * 60 * 1000) {
     return false;
   }
-  
+
   const expectedHash = getSecureSessionTokenWithTimestamp(timestamp);
   return hash === expectedHash;
 }
@@ -377,10 +393,10 @@ export async function checkAdminSession() {
 // Lazy garbage collection for soft deleted items
 export async function purgeExpiredDeletedItems() {
   if (!isSupabaseConfigured()) return;
-  
+
   // 2 minutes retention
   const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-  
+
   try {
     // 1. Menu items
     const { data: menus } = await supabaseAdmin
@@ -750,7 +766,7 @@ export async function uploadImage(formData: FormData): Promise<{ url: string }> 
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  
+
   const safeFileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
 
   // Strategy A: Upload to Supabase Storage if configured
@@ -769,7 +785,7 @@ export async function uploadImage(formData: FormData): Promise<{ url: string }> 
         const { data: publicUrlData } = supabaseAdmin.storage
           .from("ayapi-media")
           .getPublicUrl(safeFileName);
-        
+
         if (publicUrlData?.publicUrl) {
           logger.storage("UPLOAD", safeFileName, "Supabase Storage ayapi-media");
           return { url: publicUrlData.publicUrl };
@@ -783,13 +799,13 @@ export async function uploadImage(formData: FormData): Promise<{ url: string }> 
   // Strategy B: Fallback to local file upload (/public/uploads)
   try {
     const uploadDir = path.join(process.cwd(), "public", "uploads");
-    
+
     // Ensure directory exists
     await fs.mkdir(uploadDir, { recursive: true });
-    
+
     const filePath = path.join(uploadDir, safeFileName);
     await fs.writeFile(filePath, buffer);
-    
+
     logger.storage("FALLBACK", safeFileName, "Saved locally at /public/uploads");
     return { url: `/uploads/${safeFileName}` };
   } catch (err) {
@@ -1095,10 +1111,9 @@ export async function deletePartnershipLeads(ids: string[]) {
    ========================================================================= */
 
 const fallbackCategories: Category[] = [
-  { key: "krisbar", name: "Ayam Krisbar" },
-  { key: "paket", name: "Paket Hemat" },
-  { key: "geprek", name: "Ayam Geprek" },
-  { key: "sambal", name: "Aneka Sambal" },
+  { key: "utama", name: "Menu Utama" },
+  { key: "camilan", name: "Menu Camilan" },
+  { key: "minuman", name: "Menu Minuman" },
 ];
 
 export async function getCategories(): Promise<Category[]> {
@@ -2214,7 +2229,7 @@ const fallbackPackages: PartnershipPackage[] = [
     price_value: 15000000,
     description: "Lebih Ringkas, Tetap Menarik! Dimensi Rombong: 100 x 60 x 160 cm. Konsep praktis, hemat tempat, cocok untuk pemula dan lokasi padat lalu lintas.",
     badge: "Budget Friendly",
-    image: "/express_booth_mockup.png",
+    image: "/packages/booth-kuning-1.jpg",
     inclusions: [
       "Rombong Express Ringkas (100 x 60 x 160 cm)",
       "Peralatan Masak & Penggorengan Lengkap",
@@ -2233,7 +2248,7 @@ const fallbackPackages: PartnershipPackage[] = [
     price_value: 28000000,
     description: "Rombong Lebih Luas, Tampilan Lebih Maksimal! Dimensi Rombong: 125 x 60 x 200 cm. Kapasitas display etalase lebih luas untuk omzet harian lebih tinggi.",
     badge: "Best Value!",
-    image: "/express_booth_mockup.png",
+    image: "/packages/booth-kuning-2.jpg",
     inclusions: [
       "Rombong Express Luas (125 x 60 x 200 cm)",
       "Peralatan Lengkap & Display Etalase Luas",
@@ -2252,7 +2267,7 @@ const fallbackPackages: PartnershipPackage[] = [
     price_value: 90000000,
     description: "Resto minimalis & fungsional. Ukuran: 4 x 6 METER. Solusi ideal menghadirkan pengalaman dine-in hemat namun tetap nyaman dan estetik.",
     badge: "Resto Minimalis",
-    image: "/mini_resto_mockup.png",
+    image: "/packages/resto-outlet-1.jpg",
     inclusions: [
       "Layout Outlet Minimalis & Fungsional (4 x 6 M)",
       "Set Peralatan Resto & Dapur Komersial Standar",
@@ -2271,7 +2286,7 @@ const fallbackPackages: PartnershipPackage[] = [
     price_value: 135000000,
     description: "Resto modern & lebih luas. Ukuran: 5 x 7 METER. Menampung lebih banyak pelanggan dengan atmosfer modern dan operasional yang efisien.",
     badge: "Resto Modern",
-    image: "/mini_resto_mockup.png",
+    image: "/packages/resto-outlet-2.jpg",
     inclusions: [
       "Layout Outlet Modern & Luas (5 x 7 M)",
       "Peralatan Dapur Komersial Stainless Steel",
@@ -2290,7 +2305,7 @@ const fallbackPackages: PartnershipPackage[] = [
     price_value: 180000000,
     description: "Resto premium & full experience. Ukuran: 6 x 8 METER. Konsep flagship resto dengan kapasitas maksimal, interior mewah, dan pengalaman kuliner terlengkap.",
     badge: "Full Experience",
-    image: "/premium_resto_mockup.png",
+    image: "/packages/resto-outlet-3.jpg",
     inclusions: [
       "Desain Interior & Renovasi Full Experience (6 x 8 M)",
       "Peralatan Dapur Premium Kapasitas Maksimal",

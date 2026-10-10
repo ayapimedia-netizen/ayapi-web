@@ -71,11 +71,11 @@ export default function Gallery() {
         </div>
 
         {/* Gallery Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+        <div className="flex flex-wrap justify-center gap-6 md:gap-8">
           {filteredItems.map((item, index) => (
             <div
               key={index}
-              className="group relative overflow-hidden rounded-3xl aspect-[4/3] bg-glass shadow-premium border border-white/40 hover-scale-premium hover:shadow-premium-hover transition-all duration-300"
+              className="group relative overflow-hidden rounded-3xl aspect-[4/3] bg-glass shadow-premium border border-white/40 hover-scale-premium hover:shadow-premium-hover transition-all duration-300 w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.5rem)] max-w-md"
             >
               {/* Image */}
               <Image

@@ -62,10 +62,9 @@ export default function Menu() {
 
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([
     { id: "all", name: "Semua Menu" },
-    { id: "krisbar", name: "Ayam Krisbar" },
-    { id: "paket", name: "Paket Hemat" },
-    { id: "geprek", name: "Ayam Geprek" },
-    { id: "sambal", name: "Aneka Sambal" },
+    { id: "utama", name: "Menu Utama" },
+    { id: "camilan", name: "Menu Camilan" },
+    { id: "minuman", name: "Menu Minuman" },
   ]);
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -381,23 +380,23 @@ export default function Menu() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="flex flex-wrap justify-center gap-6 md:gap-8">
             {filteredItems.map((item, index) => {
               const cartItem = cart.find((ci) => ci.item.name === item.name);
               return (
                 <div
                   key={index}
-                  className="bg-white rounded-3xl overflow-hidden shadow-premium hover:shadow-premium-hover hover-scale-premium border border-gray-200/60 flex flex-col h-full group"
+                  className="bg-white rounded-3xl overflow-hidden shadow-premium hover:shadow-premium-hover hover-scale-premium border border-gray-200/60 flex flex-col justify-between group w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.5rem)] max-w-md"
                 >
                   {/* Image Section */}
-                  <div className="relative w-full h-[220px] bg-gray-50 overflow-hidden">
+                  <div className="relative w-full aspect-[4/3] bg-gray-100 overflow-hidden shrink-0">
                     <Image
                       src={item.image}
                       alt={item.name}
                       fill
                       loading="lazy"
                       className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-                      sizes="(max-w-768px) 100vw, 33vw"
+                      sizes="(max-w-768px) 100vw, (max-w-1200px) 50vw, 33vw"
                     />
                     {/* Category Badge */}
                     <span className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-brand-red text-[10px] font-bold tracking-wider px-3 py-1 rounded-full shadow-sm uppercase">
@@ -414,54 +413,58 @@ export default function Menu() {
                   </div>
 
                   {/* Content Section */}
-                  <div className="p-6 flex flex-col flex-grow">
-                    <div className="flex justify-between items-start gap-4 mb-2">
-                      <h3 className="font-bold text-lg text-brand-dark leading-snug group-hover:text-brand-red transition-colors duration-200">
-                        {item.name}
-                      </h3>
-                      <span className="bg-brand-yellow/10 text-[#b38000] font-extrabold text-sm px-3 py-1 rounded-xl whitespace-nowrap">
-                        {item.price}
-                      </span>
+                  <div className="p-6 flex flex-col justify-between flex-grow">
+                    <div>
+                      <div className="flex justify-between items-start gap-4 mb-2">
+                        <h3 className="font-bold text-lg text-brand-dark leading-snug group-hover:text-brand-red transition-colors duration-200 line-clamp-1">
+                          {item.name}
+                        </h3>
+                        <span className="bg-brand-yellow/10 text-[#b38000] font-extrabold text-sm px-3 py-1 rounded-xl whitespace-nowrap">
+                          {item.price}
+                        </span>
+                      </div>
+                      <p className="text-gray-500 text-xs leading-relaxed mb-6 text-justify line-clamp-3">
+                        {item.description}
+                      </p>
                     </div>
-                    <p className="text-gray-500 text-xs leading-relaxed mb-6 flex-grow">
-                      {item.description}
-                    </p>
 
                     {/* Action Button: Add to Cart */}
-                    {item.is_available === false ? (
-                      <button
-                        disabled
-                        className="w-full flex items-center justify-center gap-2 bg-gray-100 border border-gray-200 text-gray-400 font-bold text-xs uppercase py-3.5 rounded-xl cursor-not-allowed"
-                      >
-                        Stok Habis
-                      </button>
-                    ) : cartItem ? (
-                      <div className="flex items-center justify-between bg-gray-50 border border-gray-200/85 rounded-xl p-1.5 w-full">
+                    <div className="mt-auto w-full pt-2">
+                      {item.is_available === false ? (
                         <button
-                          onClick={() => updateQuantity(item.name, -1)}
-                          className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 text-gray-500 hover:text-brand-red hover:border-brand-red/30 rounded-lg transition-all font-extrabold cursor-pointer"
+                          disabled
+                          className="w-full flex items-center justify-center gap-2 bg-gray-100 border border-gray-200 text-gray-400 font-bold text-xs uppercase py-3.5 rounded-xl cursor-not-allowed"
                         >
-                          -
+                          Stok Habis
                         </button>
-                        <span className="font-bold text-sm text-brand-dark px-4">{cartItem.quantity}</span>
+                      ) : cartItem ? (
+                        <div className="flex items-center justify-between bg-gray-50 border border-gray-200/85 rounded-xl p-1.5 w-full">
+                          <button
+                            onClick={() => updateQuantity(item.name, -1)}
+                            className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 text-gray-500 hover:text-brand-red hover:border-brand-red/30 rounded-lg transition-all font-extrabold cursor-pointer"
+                          >
+                            -
+                          </button>
+                          <span className="font-bold text-sm text-brand-dark px-4">{cartItem.quantity}</span>
+                          <button
+                            onClick={() => addToCart(item)}
+                            className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 text-gray-500 hover:text-brand-red hover:border-brand-red/30 rounded-lg transition-all font-extrabold cursor-pointer"
+                          >
+                            +
+                          </button>
+                        </div>
+                      ) : (
                         <button
                           onClick={() => addToCart(item)}
-                          className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 text-gray-500 hover:text-brand-red hover:border-brand-red/30 rounded-lg transition-all font-extrabold cursor-pointer"
+                          className="w-full flex items-center justify-center gap-2 bg-brand-red hover:bg-[#a01c1c] text-white font-bold text-xs uppercase py-3 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
                         >
-                          +
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                          Tambah ke Keranjang
                         </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => addToCart(item)}
-                        className="w-full flex items-center justify-center gap-2 bg-brand-red hover:bg-[#a01c1c] text-white font-bold text-xs uppercase py-3 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        Tambah ke Keranjang
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               );

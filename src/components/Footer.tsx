@@ -105,11 +105,6 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/gallery" className="text-xs text-gray-600 hover:text-brand-red font-medium transition-colors duration-200">
-                  Galeri Foto
-                </Link>
-              </li>
-              <li>
                 <Link href="/kemitraan" className="text-xs text-gray-600 hover:text-brand-red font-medium transition-colors duration-200">
                   Kemitraan Franchise
                 </Link>

@@ -5,144 +5,280 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Flame, Sparkles, TrendingUp, ShieldCheck, Award, ChevronRight, Store, Utensils, Star, ArrowRight, CheckCircle2, Users, Building2 } from "lucide-react";
-import { getMenuItems, getBranches, getHeroSlides, getTestimonials, MenuItem, Branch, HeroSlide, Testimonial } from "@/app/actions";
+import QRCode from "qrcode";
+import { Flame, Sparkles, Utensils, Star, ArrowRight, CheckCircle2, Building2, Tag, Gift, X, ExternalLink } from "lucide-react";
+import { getMenuItems, getBranches, getHeroSlides, MenuItem, Branch, HeroSlide } from "@/app/actions";
 
-// Fallback slides when database is empty
+// Fallback slides when database is empty (exact 5 slides requested)
 const defaultHeroSlides: HeroSlide[] = [
   {
-    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1786456689164-w1ok8v.webp",
-    alt: "Ayam Krispi Bakar Juicy",
-    badge: "🔥 KULINER FRANCHISE TERBAIK",
-    title: "Aroma Smoky Juara,\nBisnis Kuliner Luar Biasa",
-    sub: "Sensasi Ayam Krispi Bakar (Krisbar) premium yang renyah di luar, juicy di dalam. Menarik ribuan pelanggan harian, menghadirkan peluang investasi franchise dengan keuntungan cepat dan berkelanjutan.",
-    button_text: "🍔 Lihat Menu Terlezat",
+    image: "/hero/slide-1-happy.jpg",
+    alt: "Ayapi Bikin Happy",
+    badge: "🎉 SEKALI COBA SUSAH BERHENTI",
+    title: "Ayapi Bikin Happy.\nSekali Coba Susah Berhenti!",
+    sub: "Ayam Krispi Bakar yang renyah diluar, juicy di dalam, dengan rasa yang bikin makan jadi lebih happy!",
+    button_text: "🍔 Pesan Menu Sekarang",
     button_link: "/menu",
-    button2_text: "💼 Peluang Kemitraan",
-    button2_link: "/kemitraan",
-    sort_order: 0,
-    is_active: true,
-  },
-  {
-    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1786456730256-g1ihmd.webp",
-    alt: "Ayam Geprek Krisbar Pedas",
-    badge: "🔥 MENU TERLARIS NYAMAN DI KANTONG",
-    title: "Krispi Bakar Geprek,\nPedas Nampol Nikmat!",
-    sub: "Kombinasi ayam krispi bakar saus pilihan digeprek dengan sambal korek bawang asli yang dibuat segar setiap hari. Lezatnya bikin ketagihan!",
-    button_text: "🍔 Lihat Menu Terlezat",
-    button_link: "/menu",
-    button2_text: "💼 Peluang Kemitraan",
-    button2_link: "/kemitraan",
+    button2_text: "📍 Lokasi Outlet",
+    button2_link: "/#cabang",
     sort_order: 1,
     is_active: true,
   },
   {
-    image: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=800&q=80",
-    alt: "Outlet Kemitraan Premium Ayapi",
-    badge: "🔥 PELUANG EMAS FRANCHISE",
-    title: "Gabung Kemitraan,\nModal Ringan Cepat Balik",
-    sub: "Sistem bisnis auto-pilot yang transparan, bumbu rahasia tersuplai aman, pendampingan penuh dari tim berpengalaman. Raih omset puluhan juta per bulan!",
-    button_text: "💼 Gabung Mitra Sekarang",
+    image: "/hero/slide-2-mitra.jpg",
+    alt: "Gabung Kemitraan Ayapi",
+    badge: "💼 PELUANG BISNIS KULINER",
+    title: "Gabung Kemitraan Ayapi\nFleksibel, Dibantu dari A-Z",
+    sub: "Mulai dari persiapan outlet, operasional hingga pendampingan bisnis. Bahkan jika kamu tidak punya banyak waktu untuk pengelolaan outlet, Ayapi memiliki system management untuk membantu menjalankannya.",
+    button_text: "💼 Pelajari Kemitraan",
     button_link: "/kemitraan",
-    button2_text: "📞 Hubungi Kami",
+    button2_text: "📞 Konsultasi Tim Ahli",
     button2_link: "/kontak",
     sort_order: 2,
     is_active: true,
   },
-];
-
-const defaultTestimonials: Testimonial[] = [
   {
-    name: "Indra Kurniawan",
-    role: "Mitra Franchise - Bandung",
-    rating: 5,
-    review: "Keputusan terbaik saya tahun lalu adalah bergabung menjadi mitra Ayapi. Modal awalnya sangat terjangkau, bumbu disuplai terpusat jadi rasa selalu konsisten. Kurang dari 5 bulan outlet saya sudah balik modal!",
-    initials: "IK",
-    bg_gradient: "from-red-500 to-orange-500",
-    sort_order: 1,
-    is_active: true,
-  },
-  {
-    name: "Siti Rahma",
-    role: "Pelanggan Setia - Depok",
-    rating: 5,
-    review: "Ayam krispi bakar di sini bener-bener beda! Kulit luarnya garing renyah tapi dagingnya tetap juicy banget. Ditambah saus bakar madunya yang meresap sampai ke dalam daging. Langganan keluarga kami!",
-    initials: "SR",
-    bg_gradient: "from-amber-500 to-yellow-500",
-    sort_order: 2,
-    is_active: true,
-  },
-  {
-    name: "Rian Hidayat",
-    role: "Pecinta Kuliner - Jakarta",
-    rating: 5,
-    review: "Paket Geprek Krisbar Ijonya juara banget! Pedas cabai ijonya segar gurih, rasa smoky ayam bakarnya dapet, dan porsinya bikin kenyang. Pesan lewat keranjang belanja web ini juga gampang banget, langsung masuk WA!",
-    initials: "RH",
-    bg_gradient: "from-rose-500 to-red-600",
+    image: "/hero/slide-3-krisbar.jpg",
+    alt: "Ayam Krispi Bakar Smoky",
+    badge: "🔥 PELOPOR AYAM KRISPI BAKAR",
+    title: "Ayam Krispi Bakar\nKrispi di Luar, Juicy di Dalam",
+    sub: "Bukan dengan sekedar ayam krispi. Perpaduan tekstur renyah, ayam juicy, dan aroma bakaran yang menjadi ciri khas Ayapi.",
+    button_text: "🍔 Lihat Daftar Menu",
+    button_link: "/menu",
+    button2_text: "💼 Info Kemitraan",
+    button2_link: "/kemitraan",
     sort_order: 3,
     is_active: true,
+  },
+  {
+    image: "/hero/slide-4-locations.jpg",
+    alt: "Ayapi Ada di Dekat Kamu",
+    badge: "📍 CABANG OUTLET & ONLINE",
+    title: "Ayapi Ada di Dekat Kamu 📍\nMakan Langsung atau Pesan Online",
+    sub: "Temukan outlet Ayapi terdekat dan nikmati menu favoritmu. Tersedia untuk makan ditempat maupun pemesanan online.",
+    button_text: "📍 Cari Outlet Terdekat",
+    button_link: "/#cabang",
+    button2_text: "🍔 Order Online",
+    button2_link: "/menu",
+    sort_order: 4,
+    is_active: true,
+  },
+  {
+    image: "/hero/slide-5-delivery.jpg",
+    alt: "Lagi Mager? Free Delivery!",
+    badge: "⚡ PROMO DELIVERY CEPAT",
+    title: "Lagi Mager? Free Delivery!\nNikmati Tanpa Perlu Keluar Rumah",
+    sub: "Pesan menu favoritmu dan nikmati Ayapi dari rumah. Cek ketersediaan promo dan area delivery melalui Whatsapp kami.",
+    button_text: "🛵 Chat Delivery WhatsApp",
+    button_link: "https://wa.me/628213444730?text=Halo%20Ayapi!%20Saya%20mau%20pesan%20Free%20Delivery",
+    button2_text: "🍔 Lihat Menu",
+    button2_link: "/menu",
+    sort_order: 5,
+    is_active: true,
+  },
+];
+
+type PromoItem = {
+  id: string;
+  badge: string;
+  title: string;
+  desc: string;
+  image: string;
+  bannerImage: string;
+  ctaText: string;
+  actionType: "modal" | "link";
+  linkUrl?: string;
+  details: {
+    highlight: string;
+    description: string;
+    points: string[];
+    actionButtonText?: string;
+    actionButtonUrl?: string;
+    showQrCode?: boolean;
+  };
+};
+
+const promoItems: PromoItem[] = [
+  {
+    id: "free-delivery",
+    badge: "🛵 PROMO DELIVERY",
+    title: "FREE DELIVERY",
+    desc: "Nikmati Ayapi tanpa perlu keluar rumah",
+    image: "/promos/promo-free-delivery.jpg",
+    bannerImage: "/promos/promo-free-delivery.jpg",
+    ctaText: "See More",
+    actionType: "modal",
+    details: {
+      highlight: "Gratis Ongkir Langsung ke Pintu Rumahmu!",
+      description: "Pesan menu favoritmu dan nikmati Ayapi dari rumah tanpa biaya ongkir. Cek ketersediaan promo dan area jangkauan delivery melalui WhatsApp kami.",
+      points: [
+        "Pesan langsung tanpa aplikasi ojol pihak ketiga",
+        "Ayam tiba dalam keadaan hangat, renyah, dan fresh",
+        "Tersedia untuk area delivery terdekat outlet Ayapi",
+      ],
+      actionButtonText: "Pesan via WhatsApp Delivery",
+      actionButtonUrl: "https://wa.me/628213444730?text=Halo%20Ayapi!%20Saya%20mau%20pesan%20menu%20Free%20Delivery",
+    },
+  },
+  {
+    id: "tetangga-ayapi",
+    badge: "🌴 KHUSUS KTP JIMBARAN",
+    title: "TETANGGA AYAPI",
+    desc: "Upgrade minuman khusus KTP Jimbaran",
+    image: "/promos/promo-tetangga-ayapi.jpg",
+    bannerImage: "/promos/promo-tetangga-ayapi.jpg",
+    ctaText: "See More",
+    actionType: "modal",
+    details: {
+      highlight: "Teman Santay Andalan Khusus Tetangga Jimbaran!",
+      description: "Apresiasi kami untuk warga sekitar! Dapatkan GRATIS upgrade minuman setiap pembelian menu ayam Ayapi cukup dengan menunjukkan KTP Jimbaran Anda.",
+      points: [
+        "Cukup tunjukkan KTP beralamat Jimbaran saat memesan",
+        "Gratis upgrade ke Teh Manis Jumbo atau varian minuman favorit",
+        "Berlaku untuk Dine-in & Take Away di outlet Ayapi Jimbaran",
+      ],
+      actionButtonText: "Cek Lokasi Outlet Jimbaran",
+      actionButtonUrl: "/#cabang",
+    },
+  },
+  {
+    id: "spesial-pelajar",
+    badge: "🎓 PROMO PELAJAR & MAHASISWA",
+    title: "SPESIAL UNTUK PELAJAR",
+    desc: "Nasi + ayam hanya 15RB!",
+    image: "/promos/promo-spesial-pelajar.jpg",
+    bannerImage: "/promos/promo-spesial-pelajar.jpg",
+    ctaText: "See More",
+    actionType: "modal",
+    details: {
+      highlight: "Porsi Kenyang, Sambal Mantap, Cuma 15RB!",
+      description: "Makan kenyang tanpa bikin kantong jebol! Paket hemat nasi pulen hangat + ayam renyah + Es Teh manis segar khusus untuk kamu para pelajar dan mahasiswa.",
+      points: [
+        "Paket lengkap Nasi + Ayam Gurih + Es Teh Manis",
+        "Hanya Rp 15.000 (harga khusus pelajar)",
+        "Tunjukkan kartu pelajar/mahasiswa atau kenakan seragam",
+      ],
+      actionButtonText: "Lihat Semua Menu",
+      actionButtonUrl: "/menu",
+    },
+  },
+  {
+    id: "paket-ulang-tahun",
+    badge: "🎂 EVENT & PARTY",
+    title: "PAKET ULANG TAHUN",
+    desc: "Rayakan hari istimewa Bersama kami",
+    image: "/promos/promo-paket-ulang-tahun.jpg",
+    bannerImage: "/promos/promo-paket-ulang-tahun.jpg",
+    ctaText: "See More",
+    actionType: "modal",
+    details: {
+      highlight: "Rayakan Hari Istimewa Penuh Keceriaan Bersama Ayapi!",
+      description: "Bikin pesta ulang tahun makin seru dengan paket hidangan ayam krisbar, dekorasi balon meriah, dan bingkisan spesial dari Ayapi.",
+      points: [
+        "Paket makanan praktis dan higienis untuk teman & keluarga",
+        "Bisa pesan untuk acara di outlet atau diantar langsung ke lokasi pesta",
+        "Scan barcode atau klik tombol di bawah untuk konsultasi paket dengan tim kami",
+      ],
+      actionButtonText: "Chat WhatsApp Kemitraan & Event",
+      actionButtonUrl: "https://wa.me/628213444730?text=Halo%20Tim%20Ayapi!%20Saya%20ingin%20tanya%20detail%20Paket%20Ulang%20Tahun",
+      showQrCode: true,
+    },
+  },
+  {
+    id: "kemitraan",
+    badge: "💼 BISNIS KULINER",
+    title: "KEMITRAAN",
+    desc: "Dapatkan harga spesial untuk kemitraan",
+    image: "/hero/slide-2-mitra.jpg",
+    bannerImage: "/hero/slide-2-mitra.jpg",
+    ctaText: "See More",
+    actionType: "link",
+    linkUrl: "/kemitraan",
+    details: {
+      highlight: "Peluang Usaha Kuliner Menguntungkan",
+      description: "Sesuaikan model kemitraan Anda. Mulai dari Rombong Express praktis hingga Restoran modern dengan promo investasi spesial mulai 15 Juta.",
+      points: [
+        "Sistem SOP teruji & operasional tanpa koki",
+        "Bumbu rahasia disuplai terpusat",
+        "Estimasi BEP balik modal cepat 5 - 8 bulan",
+      ],
+      actionButtonText: "Buka Halaman Kemitraan",
+      actionButtonUrl: "/kemitraan",
+    },
   },
 ];
 
 export default function Home() {
-  const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(defaultHeroSlides);
-  const [testimonials, setTestimonials] = useState<Testimonial[]>(defaultTestimonials);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+
+  // Promo Modal State
+  const [selectedPromo, setSelectedPromo] = useState<PromoItem | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
 
   // Data States
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
 
-  // Calculator State
-  const [portionSales, setPortionSales] = useState(150); // Daily portions sold slider
-
-  // Calculator Constants
-  const AVG_PORTION_PRICE = 22000;
-  const NET_PROFIT_MARGIN = 0.40; // 40% Net Profit Margin
-  const FIXED_MONTHLY_OPEX = 10000000; // Rp 10.000.000 (rent, salaries, utility)
-  const INITIAL_INVESTMENT = 45000000; // Rp 45.000.000 (standard franchise fee & setup package)
-
-  // Calculator Derivations
-  const dailyRevenue = portionSales * AVG_PORTION_PRICE;
-  const monthlyRevenue = dailyRevenue * 30;
-  const monthlyNetProfit = Math.max(0, (monthlyRevenue * NET_PROFIT_MARGIN) - FIXED_MONTHLY_OPEX);
-  const estimatedRoiMonths = monthlyNetProfit > 0 ? INITIAL_INVESTMENT / monthlyNetProfit : 0;
-
   useEffect(() => {
-    // Preload default hero slide images immediately on mount
-    if (typeof window !== "undefined") {
-      defaultHeroSlides.forEach((s) => {
-        if (s.image) {
-          const img = new window.Image();
-          img.src = s.image;
-        }
-      });
-    }
-
-    // Fetch hero slides first for instant display
-    getHeroSlides().then((slidesData) => {
-      if (slidesData && slidesData.length > 0) {
-        setHeroSlides(slidesData);
-        if (typeof window !== "undefined") {
-          slidesData.forEach((s) => {
-            if (s.image) {
-              const img = new window.Image();
-              img.src = s.image;
-            }
-          });
-        }
+    // Generate QR code for WhatsApp Kemitraan / Birthday reservation
+    QRCode.toDataURL(
+      "https://wa.me/628213444730?text=Halo%20Tim%20Ayapi!%20Saya%20ingin%20tanya%20detail%20Paket%20Ulang%20Tahun%20dan%20Kemitraan",
+      {
+        width: 260,
+        margin: 1,
+        color: { dark: "#99000B", light: "#FFFFFF" },
       }
-    }).catch((err) => console.error("Error fetching slides:", err));
+    )
+      .then(setQrCodeUrl)
+      .catch((err) => console.error("QR Code generation error:", err));
 
-    getMenuItems().then((items) => setFeaturedItems(items.slice(0, 3))).catch((err) => console.error("Error fetching menu:", err));
-    getBranches().then(setBranches).catch((err) => console.error("Error fetching branches:", err));
-    getTestimonials().then((testimonialsData) => {
-      if (testimonialsData && testimonialsData.length > 0) {
-        setTestimonials(testimonialsData);
-      }
-    }).catch((err) => console.error("Error fetching testimonials:", err));
+    // Fetch hero slides
+    getHeroSlides()
+      .then((slidesData) => {
+        if (slidesData && slidesData.length > 0) {
+          setHeroSlides(slidesData);
+        }
+      })
+      .catch((err) => console.error("Error fetching slides:", err));
+
+    getMenuItems()
+      .then((items) => {
+        if (items && items.length > 0) {
+          setFeaturedItems(items.slice(0, 3));
+        } else {
+          // Default fallbacks with real images
+          setFeaturedItems([
+            {
+              name: "Paket Ayam Krispi Bakar (Krisbar)",
+              price: "Rp 22.000",
+              description: "Ayam krispi bakar bumbu karamel smoky rahasia Ayapi + Nasi hangat pulen + Lalapan segar.",
+              category: "utama",
+              image: "/hero/slide-3-krisbar.jpg",
+            },
+            {
+              name: "Paket Viral 1 (Ayam Biasa / Sayap)",
+              price: "Rp 16.000",
+              description: "Nasi hangat pulen + Ayam goreng renyah bumbu marinasi khas + Sambal korek bawang segar.",
+              category: "utama",
+              image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1786456730256-g1ihmd.webp",
+            },
+            {
+              name: "Paket FC 1 + Es Teh",
+              price: "Rp 15.000",
+              description: "Paket Pelajar Hemat: Paha bawah / sayap renyah + Nasi putih + Es teh manis segar.",
+              category: "utama",
+              image: "/promos/promo-spesial-pelajar.jpg",
+            },
+          ]);
+        }
+      })
+      .catch((err) => console.error("Error fetching menu:", err));
+
+    getBranches()
+      .then(setBranches)
+      .catch((err) => console.error("Error fetching branches:", err));
   }, []);
 
   // Auto advance hero slideshow
@@ -154,18 +290,6 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [heroSlides.length]);
 
-  const handleNextTestimonial = () => {
-    setActiveTestimonial((prev) => (prev + 1) % testimonials.length);
-  };
-
-  const handlePrevTestimonial = () => {
-    setActiveTestimonial((prev) => (prev - 1 + testimonials.length) % testimonials.length);
-  };
-
-  const formatCurrency = (val: number): string => {
-    return "Rp " + Math.round(val).toLocaleString("id-ID");
-  };
-
   const faqs = [
     {
       question: "Apa keunikan utama Ayam Krispi Bakar (Krisbar) Ayapi?",
@@ -176,12 +300,12 @@ export default function Home() {
       answer: "Ya, 100% Halal. Kami hanya menggunakan daging ayam segar pilihan yang dipotong sesuai syariat Islam, serta diolah menggunakan bumbu-bumbu alami berkualitas tinggi di bawah pengawasan kebersihan yang sangat ketat.",
     },
     {
-      question: "Bagaimana cara memesan Ayapi untuk acara pesta atau katering?",
-      answer: "Anda dapat melakukan pemesanan partai besar/katering secara praktis dengan mengisi keranjang belanja pada halaman Menu website ini dan memilih opsi checkout WhatsApp untuk terhubung langsung dengan customer service kami.",
+      question: "Bagaimana cara memesan Ayapi untuk Free Delivery atau Acara Pesta?",
+      answer: "Anda dapat memesan langsung melalui tombol WhatsApp di website ini. Untuk free delivery atau paket catering/ulang tahun, tim customer service kami akan melayani dan mengkonfirmasi pesanan Anda dengan cepat.",
     },
     {
-      question: "Apakah Ayapi membuka peluang kemitraan franchise?",
-      answer: "Tentu! Kami membuka peluang kemitraan franchise waralaba dengan investasi awal yang sangat terjangkau, sistem SOP operasional yang mudah dijalankan, suplai bumbu terpusat, dan estimasi balik modal (ROI) yang cepat.",
+      question: "Bagaimana cara bergabung dalam peluang kemitraan franchise Ayapi?",
+      answer: "Anda dapat membuka menu Kemitraan di website ini untuk melihat detail paket Rombong Express maupun Resto (mulai promo 15 Juta), mengunduh proposal PDF resmi, dan konsultasi langsung bersama tim kemitraan kami.",
     },
   ];
 
@@ -203,15 +327,15 @@ export default function Home() {
                 src={slide.image}
                 alt={slide.alt}
                 fill
-                priority
-                loading="eager"
+                priority={idx === 0}
+                loading={idx === 0 ? "eager" : "lazy"}
                 unoptimized
                 className={`object-cover transition-transform duration-[8000ms] ease-out ${idx === currentHeroSlide ? "scale-105" : "scale-100"
                   }`}
                 sizes="100vw"
               />
               {/* Perfect Balanced Luxury Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/25"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-black/30"></div>
 
               {/* Ambient Glowing Orbs inside Hero */}
               <div className="ambient-orb w-[500px] h-[500px] bg-brand-red/15 top-1/4 -left-24 animate-orb-1"></div>
@@ -332,8 +456,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* USP SECTION: HIGH-END BENTO GRID */}
-      <section className="py-20 md:py-28 border-b border-gray-100 bg-white relative overflow-hidden">
+      {/* PROMO AYAPI SECTION (Replaced Keunggulan Bisnis Ayapi Bento Grid) */}
+      <section className="py-20 md:py-28 border-b border-gray-100 bg-white relative overflow-hidden" id="promo">
         {/* Ambient Orbs */}
         <div className="ambient-orb w-96 h-96 bg-brand-red/5 top-8 left-12 animate-orb-1"></div>
         <div className="ambient-orb w-96 h-96 bg-brand-orange/5 bottom-8 right-12 animate-orb-2"></div>
@@ -342,116 +466,78 @@ export default function Home() {
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-brand-red font-extrabold text-xs uppercase tracking-widest px-4 py-2 bg-brand-red/10 rounded-full inline-flex items-center gap-2 mb-3 border border-brand-red/20">
               <Sparkles className="w-3.5 h-3.5 text-brand-orange" />
-              KEUNGGULAN BISNIS AYAPI
+              PROMO AYAPI SPESIAL
             </span>
             <h2 className="text-3xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">
-              Mengapa Memilih Ayapi Krispi Bakar?
+              Promo Menarik Untuk Anda
             </h2>
             <div className="h-1.5 w-20 bg-gradient-to-r from-brand-red to-brand-orange mx-auto rounded-full mb-4"></div>
             <p className="text-gray-600 text-sm md:text-base leading-relaxed font-medium">
-              Perpaduan rasa bintang lima yang dicintai pasar dengan standarisasi operasional teruji untuk keuntungan maksimal mitra.
+              Nikmati beragam penawaran hemat mulai dari Free Delivery, upgrade minuman, paket pelajar, perayaan ulang tahun, hingga promo kemitraan outlet.
             </p>
           </div>
 
-          {/* ASYMMETRIC BENTO GRID */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-            
-            {/* Bento Card 1: Featured 2-Column Wide Card */}
-            <div className="md:col-span-2 bento-card bg-gradient-to-br from-brand-red via-brand-maroon to-gray-900 text-white p-8 md:p-10 shadow-2xl border border-white/10 rounded-3xl flex flex-col justify-between group hover:shadow-2xl transition-all duration-300">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="w-14 h-14 bg-gradient-to-br from-brand-orange to-amber-600 rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <Flame className="w-7 h-7 text-white fill-white" />
-                  </div>
-                  <span className="bg-white/15 text-white text-[10px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full border border-white/20">
-                    Bumbu Rahasia Terpusat
-                  </span>
-                </div>
-                <h3 className="text-2xl md:text-3xl font-black tracking-tight text-white group-hover:text-brand-orange transition-colors">
-                  Cita Rasa Smoky Bakar Karamel Rahasia
-                </h3>
-                <p className="text-gray-200 text-sm leading-relaxed max-w-xl font-medium">
-                  Formula bumbu karamel manis pedas smoky diolah secara terpusat. Rasa konsisten 100% sama di seluruh cabang outlet tanpa memerlukan koki profesional!
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-8 border-t border-white/15 mt-8">
-                <div className="flex items-center gap-2 text-xs font-extrabold text-white">
-                  <CheckCircle2 className="w-4 h-4 text-brand-orange" /> Supply Bumbu Terjamin
-                </div>
-                <div className="flex items-center gap-2 text-xs font-extrabold text-white">
-                  <CheckCircle2 className="w-4 h-4 text-brand-orange" /> SOP Tanpa Koki
-                </div>
-                <div className="flex items-center gap-2 text-xs font-extrabold text-white">
-                  <CheckCircle2 className="w-4 h-4 text-brand-orange" /> Cita Rasa Teruji
-                </div>
-              </div>
-            </div>
-
-            {/* Bento Card 2: 100% Halal & Segar */}
-            <div className="bento-card bg-white border border-gray-100 p-8 shadow-xl hover:shadow-2xl rounded-3xl transition-all duration-300 flex flex-col justify-between group">
-              <div>
-                <div className="w-12 h-12 bg-brand-red/10 text-brand-red rounded-2xl flex items-center justify-center mb-6 font-bold text-xl group-hover:scale-110 transition-transform">
-                  <ShieldCheck className="w-6 h-6 text-brand-red" />
-                </div>
-                <span className="bg-brand-red/10 text-brand-red text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full inline-block mb-3">
-                  100% Halal & Higienis
-                </span>
-                <h3 className="font-black text-xl text-gray-900 mb-3">Bahan Segar Terjamin</h3>
-                <p className="text-gray-600 text-xs leading-relaxed font-medium">
-                  Semua bahan baku ayam segar dan rempah alami bersertifikat Halal MUI serta diproses di bawah standar sanitasi tinggi.
-                </p>
-              </div>
-              <div className="pt-6 border-t border-gray-100 mt-6 text-[11px] font-extrabold text-brand-red flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-brand-red" /> Siap Pasang & Aman Regulasi
-              </div>
-            </div>
-
-            {/* Bento Card 3: BEP Balik Modal Cepat */}
-            <div className="bento-card bg-white border border-gray-100 p-8 shadow-xl hover:shadow-2xl rounded-3xl transition-all duration-300 flex flex-col justify-between group">
-              <div>
-                <div className="w-12 h-12 bg-brand-orange/10 text-brand-orange rounded-2xl flex items-center justify-center mb-6 font-bold text-xl group-hover:scale-110 transition-transform">
-                  <TrendingUp className="w-6 h-6 text-brand-orange" />
-                </div>
-                <span className="bg-brand-orange/10 text-brand-orange text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full inline-block mb-3">
-                  ROI Tinggi
-                </span>
-                <h3 className="font-black text-xl text-gray-900 mb-3">Balik Modal 5 - 8 Bulan</h3>
-                <p className="text-gray-600 text-xs leading-relaxed font-medium">
-                  Margin keuntungan bersih hingga 40% dengan biaya operasional yang efisien. Mempercepat masa pengembalian investasi mitra.
-                </p>
-              </div>
-              <div className="pt-6 border-t border-gray-100 mt-6 text-[11px] font-extrabold text-brand-orange flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-brand-orange" /> Estimasi BEP Sangat Cepat
-              </div>
-            </div>
-
-            {/* Bento Card 4: Support Operational 2-Col Wide */}
-            <div className="md:col-span-2 bento-card bg-white border border-gray-100 p-8 md:p-10 shadow-xl hover:shadow-2xl rounded-3xl transition-all duration-300 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 group">
-              <div className="space-y-3 max-w-lg">
-                <div className="w-12 h-12 bg-brand-red/10 text-brand-red rounded-2xl flex items-center justify-center font-bold text-xl group-hover:scale-110 transition-transform">
-                  <Award className="w-6 h-6 text-brand-red" />
-                </div>
-                <h3 className="font-black text-2xl text-gray-900">Pendampingan Full Operational & Marketing</h3>
-                <p className="text-gray-600 text-xs leading-relaxed font-medium">
-                  Tim pusat Ayapi siap mendampingi Anda mulai dari survey lokasi, pelatihan staf karyawan, penyediaan promo launching, hingga materi promosi sosmed berkala.
-                </p>
-              </div>
-
-              <Link
-                href="/kemitraan"
-                className="bg-brand-red hover:bg-[#a01c1c] text-white font-black uppercase tracking-widest px-6 py-4 rounded-xl text-xs shadow-lg shadow-brand-red/20 hover:shadow-brand-red/40 transition-all duration-300 shrink-0 self-start md:self-center"
+          {/* PROMO CARDS GRID */}
+          <div className="flex flex-wrap justify-center gap-6 lg:gap-8">
+            {promoItems.map((promo) => (
+              <div
+                key={promo.id}
+                className="bento-card bg-white border border-gray-100 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group overflow-hidden w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.5rem)] max-w-md"
               >
-                Pelajari Paket Kemitraan →
-              </Link>
-            </div>
+                <div className="flex flex-col flex-grow">
+                  {/* Thumbnail / Visual */}
+                  <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden mb-5 bg-gray-50 border border-gray-100 shrink-0">
+                    <Image
+                      src={promo.image}
+                      alt={promo.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      sizes="(max-w-768px) 100vw, (max-w-1200px) 50vw, 33vw"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                    <span className="absolute top-3 left-3 bg-brand-red text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
+                      {promo.badge}
+                    </span>
+                  </div>
 
+                  <h3 className="font-black text-xl text-gray-900 mb-2 group-hover:text-brand-red transition-colors line-clamp-1">
+                    {promo.title}
+                  </h3>
+                  <p className="text-gray-600 text-xs sm:text-sm leading-relaxed font-medium text-justify">
+                    {promo.desc}
+                  </p>
+                </div>
+
+                <div className="pt-6 border-t border-gray-100 mt-6 flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold text-brand-red uppercase tracking-wider">
+                    {promo.badge}
+                  </span>
+
+                  {promo.actionType === "link" ? (
+                    <Link
+                      href={promo.linkUrl || "/kemitraan"}
+                      className="inline-flex items-center gap-1.5 bg-brand-red hover:bg-[#80000a] text-white font-extrabold text-xs uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-md transition-all duration-200 hover:scale-105 cursor-pointer"
+                    >
+                      <span>See More</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => setSelectedPromo(promo)}
+                      className="inline-flex items-center gap-1.5 bg-brand-red hover:bg-[#80000a] text-white font-extrabold text-xs uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-md transition-all duration-200 hover:scale-105 cursor-pointer"
+                    >
+                      <span>See More</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-
-      {/* Featured Menu Section */}
+      {/* Featured Menu Section (Cita Rasa Terpilih) */}
       <section className="py-16 md:py-24 bg-grid-pattern-light bg-brand-light/35 relative overflow-hidden">
         {/* Ambient Orb */}
         <div className="ambient-orb w-96 h-96 bg-brand-red/5 top-12 left-1/4 animate-orb-1"></div>
@@ -470,188 +556,65 @@ export default function Home() {
             </p>
           </div>
 
-          {featuredItems.length === 0 ? (
-            <div className="text-center py-12 bg-white/60 backdrop-blur-md rounded-3xl border border-gray-100 max-w-md mx-auto shadow-sm">
-              <p className="text-gray-500 font-medium text-xs">Belum ada menu terfavorit yang ditampilkan saat ini.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
-              {featuredItems.map((item, index) => (
-                <div
-                  key={index}
-                  className="bg-glass rounded-3xl overflow-hidden shadow-premium hover:shadow-premium-hover hover-scale-premium border border-white/60 flex flex-col h-full group"
-                >
-                  <div className="relative w-full h-[220px] bg-gray-50 overflow-hidden">
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      fill
-                      loading="lazy"
-                      className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                      sizes="(max-w-768px) 100vw, 33vw"
-                    />
-                    {/* Category Badge overlay */}
-                    <span className="absolute top-4 left-4 bg-brand-red text-white text-[9px] font-black tracking-widest px-3 py-1.5 rounded-xl shadow-md uppercase z-10">
-                      ⭐ TERFAVORIT
-                    </span>
-
-                    {item.is_available === false && (
-                      <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px] flex items-center justify-center z-10">
-                        <span className="bg-brand-red text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-xl shadow-lg animate-pulse">
-                          Habis
-                        </span>
-                      </div>
-                    )}
+          <div className="flex flex-wrap justify-center gap-8 md:gap-10">
+            {featuredItems.map((item, index) => (
+              <div
+                key={index}
+                className="bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden flex flex-col justify-between group hover:shadow-2xl transition-all duration-300 w-full md:w-[calc(50%-1.25rem)] lg:w-[calc(33.333%-1.75rem)] max-w-md"
+              >
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100 shrink-0">
+                  <Image
+                    src={item.image}
+                    alt={item.name}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    sizes="(max-w-768px) 100vw, (max-w-1200px) 50vw, 33vw"
+                  />
+                  <div className="absolute top-4 left-4 bg-brand-red text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-md">
+                    Favorit
                   </div>
-                  <div className="p-6 flex flex-col flex-grow">
-                    <div className="flex justify-between items-start gap-4 mb-2">
-                      <h3 className="font-bold text-lg text-brand-dark leading-snug group-hover:text-brand-red transition-colors duration-200">
-                        {item.name}
-                      </h3>
-                      <span className="bg-brand-yellow/15 text-[#b38000] font-extrabold text-sm px-3 py-1 rounded-xl whitespace-nowrap">
-                        {item.price}
-                      </span>
-                    </div>
+                </div>
 
-                    {/* Spicy Pepper Indicator */}
-                    {(item.name.toLowerCase().includes("geprek") || item.name.toLowerCase().includes("sambal") || item.name.toLowerCase().includes("original")) && (
-                      <div className="flex items-center gap-1 mb-3" title="Tingkat Kepedasan">
-                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Level Pedas:</span>
-                        <span className="text-xs">{item.name.toLowerCase().includes("geprek") ? "🌶️🌶️🌶️" : "🌶️🌶️"}</span>
-                      </div>
-                    )}
-
-                    <p className="text-gray-500 text-xs leading-relaxed mb-6 flex-grow">
+                <div className="p-6 flex flex-col justify-between flex-grow space-y-4">
+                  <div>
+                    <h3 className="font-extrabold text-lg text-brand-dark group-hover:text-brand-red transition-colors line-clamp-1">
+                      {item.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 leading-relaxed mt-2 text-justify line-clamp-2">
                       {item.description}
                     </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto">
+                    <span className="text-base font-black text-brand-red">
+                      {item.price}
+                    </span>
                     <Link
                       href="/menu"
-                      className="text-brand-red font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 hover:gap-2 transition-all duration-200 self-start mt-auto"
+                      className="bg-brand-red hover:bg-[#80000a] text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl transition-all hover:scale-105"
                     >
-                      Detail Menu
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                      </svg>
+                      Pesan Sekarang
                     </Link>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* INTERACTIVE FRANCHISE PROFITABILITY SIMULATOR (Investor Hook) */}
-      <section className="bg-white text-gray-900 py-20 md:py-24 relative overflow-hidden border-b border-gray-100">
-        {/* Background decorative elements */}
-        <div className="ambient-orb w-[600px] h-[600px] bg-brand-red/5 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-orb-1"></div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            
-            {/* Left Content Column */}
-            <div className="lg:col-span-5 space-y-6">
-              <span className="bg-brand-red/10 text-brand-red font-extrabold text-xs uppercase tracking-widest px-4 py-2 rounded-full inline-flex items-center gap-2 border border-brand-red/20">
-                <TrendingUp className="w-3.5 h-3.5 text-brand-orange" />
-                SIMULATOR INVESTASI B2B
-              </span>
-              <h2 className="text-3xl md:text-4xl font-black tracking-tight leading-tight text-gray-900">
-                Simulasikan Keuntungan <br />Franchise Anda
-              </h2>
-              <div className="h-1.5 w-16 bg-brand-orange rounded-full"></div>
-              <p className="text-gray-600 text-sm md:text-base leading-relaxed font-medium">
-                Gunakan slider di samping untuk mensimulasikan penjualan harian outlet Ayapi Anda. Hitung langsung potensi pendapatan kotor, laba bersih bulanan, serta estimasi durasi balik modal berdasarkan modal paket standard kami sebesar <strong>{formatCurrency(INITIAL_INVESTMENT)}</strong>.
-              </p>
-              <div className="bg-white border border-gray-100 p-5 rounded-2xl text-xs text-gray-600 leading-relaxed space-y-2 shadow-lg">
-                <p className="font-extrabold text-brand-red uppercase tracking-wider text-[10px]">Asumsi Keuangan:</p>
-                <p>• Harga Rata-rata Porsi: <strong>Rp 22.000</strong></p>
-                <p>• Margin Keuntungan Bersih: <strong>40%</strong> (setelah COGS & Royalty fee)</p>
-                <p>• Biaya Operasional Tetap Bulanan: <strong>Rp 10.000.000</strong> (Sewa tempat, 2 staff gaji, & utilitas)</p>
               </div>
-            </div>
+            ))}
+          </div>
 
-            {/* Right Simulator Card Column */}
-            <div className="lg:col-span-7 bg-white text-gray-900 p-6 md:p-10 rounded-3xl shadow-2xl border border-gray-100/90 flex flex-col justify-between space-y-8">
-
-              {/* Slider Input */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-black uppercase text-gray-400 tracking-wider">
-                    Target Penjualan Harian
-                  </label>
-                  <span className="bg-brand-red text-white text-sm font-black px-4 py-1.5 rounded-full shadow-md">
-                    {portionSales} Porsi / Hari
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="50"
-                  max="500"
-                  step="10"
-                  value={portionSales}
-                  onChange={(e) => setPortionSales(parseInt(e.target.value, 10))}
-                  className="accent-brand-red w-full h-2.5 bg-gray-100 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-red"
-                />
-                <div className="flex justify-between text-[10px] text-gray-400 font-bold uppercase">
-                  <span>50 porsi</span>
-                  <span>250 porsi</span>
-                  <span>500 porsi</span>
-                </div>
-              </div>
-
-              {/* Outputs Display */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
-                <div className="bg-gray-50 border border-gray-100 p-4.5 rounded-2xl">
-                  <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">Omzet Harian</span>
-                  <span className="text-lg font-black text-brand-dark mt-1 block">
-                    {formatCurrency(dailyRevenue)}
-                  </span>
-                </div>
-                <div className="bg-gray-50 border border-gray-100 p-4.5 rounded-2xl">
-                  <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">Omzet Bulanan</span>
-                  <span className="text-lg font-black text-brand-dark mt-1 block">
-                    {formatCurrency(monthlyRevenue)}
-                  </span>
-                </div>
-                <div className="bg-brand-red/5 border border-brand-red/10 p-4.5 rounded-2xl">
-                  <span className="text-[9px] text-brand-red font-bold uppercase tracking-wider block">Laba Bersih Bulanan</span>
-                  <span className="text-lg font-black text-brand-red mt-1 block">
-                    {formatCurrency(monthlyNetProfit)}
-                  </span>
-                </div>
-              </div>
-
-              {/* ROI Payback Period Gauge */}
-              <div className="border-t border-gray-100 pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Estimasi Balik Modal (ROI)</span>
-                  {monthlyNetProfit > 0 ? (
-                    <span className="text-xl font-black text-brand-dark flex items-center gap-1.5 mt-1">
-                      ⚡ ± {estimatedRoiMonths.toFixed(1)} Bulan
-                      <span className="text-xs text-gray-400 font-semibold">(sangat cepat)</span>
-                    </span>
-                  ) : (
-                    <span className="text-sm font-bold text-red-500 mt-1 block">
-                      ⚠️ Laba belum menutupi Opex. Tingkatkan penjualan.
-                    </span>
-                  )}
-                </div>
-
-                <Link
-                  href="/kemitraan"
-                  className="bg-brand-yellow hover:bg-[#e0a800] text-black font-black uppercase tracking-widest px-6 py-3.5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-xs text-center flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  💼 Ambil Proposal Kemitraan
-                </Link>
-              </div>
-
-            </div>
+          <div className="text-center mt-12">
+            <Link
+              href="/menu"
+              className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-brand-dark font-extrabold text-xs uppercase tracking-wider px-8 py-4 rounded-xl border border-gray-200 shadow-md transition-all hover:scale-105"
+            >
+              <span>Lihat Semua Menu Ayapi</span>
+              <ArrowRight className="w-4 h-4 text-brand-red" />
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* ACTIVE PHYSICAL OUTLETS SHOWCASE */}
-      <section className="py-16 md:py-24 border-b border-gray-50 bg-grid-pattern relative overflow-hidden bg-white">
+      {/* ACTIVE PHYSICAL OUTLETS SHOWCASE (Jejak Cabang Aktif) */}
+      <section className="py-16 md:py-24 border-b border-gray-50 bg-grid-pattern relative overflow-hidden bg-white" id="cabang">
         {/* Ambient Orbs */}
         <div className="ambient-orb w-80 h-80 bg-brand-red/10 top-12 right-12 animate-orb-1"></div>
         <div className="ambient-orb w-80 h-80 bg-brand-yellow/10 bottom-12 left-12 animate-orb-2"></div>
@@ -675,11 +638,11 @@ export default function Home() {
               📍 Memuat lokasi outlet cabang Ayapi...
             </div>
           ) : (
-            <div className="flex flex-wrap justify-center gap-8">
+            <div className="flex flex-wrap justify-center gap-6 md:gap-8">
               {branches.map((branch) => (
                 <div
                   key={branch.id}
-                  className="bg-glass rounded-3xl border border-white/60 p-6 flex flex-col justify-between shadow-premium hover:shadow-premium-hover hover-scale-premium transition-all duration-300 group w-full sm:w-[calc(50%-1rem)] md:w-[calc(33.333%-1.35rem)] min-w-[290px] max-w-sm"
+                  className="bg-glass rounded-3xl border border-white/60 p-6 flex flex-col justify-between shadow-premium hover:shadow-premium-hover hover-scale-premium transition-all duration-300 group w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.5rem)] max-w-md"
                 >
                   <div className="space-y-3">
                     <div className="w-10 h-10 bg-brand-red/10 text-brand-red rounded-xl flex items-center justify-center font-bold text-base group-hover:scale-110 transition-transform">
@@ -692,7 +655,7 @@ export default function Home() {
                   </div>
 
                   {/* Delivery Links Container */}
-                  <div className="border-t border-gray-50 pt-5 mt-6 space-y-2.5">
+                  <div className="border-t border-gray-100/60 pt-5 mt-6 space-y-2.5">
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                       Pesan Online Via Ojol:
                     </p>
@@ -747,55 +710,11 @@ export default function Home() {
               ))}
             </div>
           )}
+
         </div>
       </section>
 
-      {/* Short About Section */}
-      <section className="bg-white py-16 md:py-24 border-t border-b border-gray-50 bg-grid-pattern-light relative overflow-hidden">
-        {/* Ambient Orb */}
-        <div className="ambient-orb w-80 h-80 bg-brand-red/5 top-20 left-1/4 animate-orb-2"></div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-center">
-            {/* Left Image */}
-            <div className="relative w-full h-[280px] sm:h-[350px] md:h-[450px] rounded-3xl overflow-hidden shadow-lg order-2 md:order-1 bg-gray-100">
-              <Image
-                src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80"
-                alt="Tentang Ayapi Krispi Bakar"
-                fill
-                loading="lazy"
-                className="object-cover"
-                sizes="(max-w-768px) 100vw, 50vw"
-              />
-            </div>
-
-            {/* Right Text */}
-            <div className="space-y-6 order-1 md:order-2">
-              <span className="text-brand-red font-bold text-xs uppercase tracking-wider">Cita Rasa Nusantara</span>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-brand-dark leading-tight">
-                Cerita Rasa Ayapi
-              </h2>
-              <div className="h-1 w-12 bg-brand-red rounded-full"></div>
-              <p className="text-gray-600 text-base leading-relaxed">
-                Berawal dari kecintaan kami terhadap warisan kuliner khas Nusantara, Ayapi menghadirkan inovasi cita rasa baru: <strong>Ayam Krispi Bakar (Krisbar)</strong>. Kami menggabungkan renyahnya kulit ayam goreng tepung dengan bumbu bakar karamel smoky manis pedas gurih rahasia kami.
-              </p>
-              <p className="text-gray-600 text-base leading-relaxed">
-                Dengan manajemen logistik bumbu terpusat, Ayapi menjamin kemudahan pasokan bahan baku bagi seluruh mitra franchise, menjadikannya pilihan usaha kuliner dengan operasional sederhana namun memiliki daya tarik pasar yang sangat kuat.
-              </p>
-              <div className="pt-2">
-                <Link
-                  href="/kontak"
-                  className="bg-brand-red hover:bg-[#a01c1c] text-white font-bold uppercase tracking-wider px-6 py-3.5 rounded-xl text-xs shadow-sm transition-all duration-200 inline-block"
-                >
-                  Hubungi Kami
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ Accordion Section */}
+      {/* FAQ Accordion Section (Pindah ke paling bawah homepage) */}
       <section className="py-16 md:py-24 border-b border-gray-100 bg-grid-pattern-light relative overflow-hidden bg-white">
         {/* Ambient Background Orbs */}
         <div className="ambient-orb animate-orb-1 bg-brand-red w-72 h-72 top-10 right-10 opacity-[0.05]" />
@@ -844,130 +763,117 @@ export default function Home() {
         </div>
       </section>
 
-      {/* INTERACTIVE CUSTOMER & PARTNER TESTIMONIALS */}
-      <section className="py-16 md:py-24 border-b border-gray-100 bg-grid-pattern-light relative overflow-hidden bg-gray-50/50">
-        {/* Ambient Orbs */}
-        <div className="ambient-orb w-80 h-80 bg-brand-red/10 top-12 left-12 animate-orb-1"></div>
-        <div className="ambient-orb w-80 h-80 bg-brand-yellow/10 bottom-12 right-12 animate-orb-2"></div>
+      {/* PROMO DETAIL POP-UP MODAL */}
+      {selectedPromo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+            onClick={() => setSelectedPromo(null)}
+          ></div>
 
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="bg-white rounded-3xl overflow-hidden max-w-xl w-full z-10 shadow-2xl border border-gray-100 relative animate-fade-in max-h-[90vh] flex flex-col">
+            {/* Modal Header & Close Button */}
+            <div className="relative w-full h-52 sm:h-64 bg-gray-100 shrink-0">
+              <Image
+                src={selectedPromo.bannerImage}
+                alt={selectedPromo.title}
+                fill
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
 
-          <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
-            <span className="text-brand-red font-bold text-xs uppercase tracking-wider">Review Mitra & Konsumen</span>
-            <h2 className="text-3xl font-extrabold text-brand-dark mt-2">Suara Mereka Yang Sukses</h2>
-            <div className="h-1 w-12 bg-brand-red mx-auto rounded-full mt-3"></div>
-          </div>
+              <button
+                onClick={() => setSelectedPromo(null)}
+                className="absolute top-4 right-4 text-white hover:text-brand-yellow p-2 rounded-full bg-black/40 hover:bg-black/70 transition-all cursor-pointer z-10"
+                title="Tutup Modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
 
-          {/* Testimonial Card */}
-          {testimonials.length > 0 && testimonials[activeTestimonial] ? (
-            <div className="bg-glass rounded-3xl border border-white/60 p-8 md:p-12 shadow-premium hover:shadow-premium-hover transition-all duration-300 relative space-y-6 min-h-[250px] flex flex-col justify-between">
-              {/* SVG Quote Icon Background */}
-              <span className="absolute top-6 right-8 text-gray-100/85 font-serif text-8xl pointer-events-none select-none">
-                “
-              </span>
+              <div className="absolute bottom-4 left-6 right-6 text-white space-y-1">
+                <span className="bg-brand-red text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-md inline-block">
+                  {selectedPromo.badge}
+                </span>
+                <h3 className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-md">
+                  {selectedPromo.title}
+                </h3>
+              </div>
+            </div>
 
-              {/* Testimonial Content */}
-              <div className="space-y-4">
-                {/* Rating Stars */}
-                <div className="flex gap-1 text-brand-yellow">
-                  {Array.from({ length: testimonials[activeTestimonial]?.rating || 5 }).map((_, i) => (
-                    <svg key={i} className="w-5 h-5 fill-current" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-
-                {/* Review Text */}
-                <p className="text-gray-600 text-sm md:text-base leading-relaxed italic">
-                  &ldquo;{testimonials[activeTestimonial]?.review}&rdquo;
+            {/* Modal Body */}
+            <div className="p-6 sm:p-8 overflow-y-auto space-y-5">
+              <div className="space-y-2">
+                <h4 className="font-black text-lg text-brand-dark">
+                  {selectedPromo.details.highlight}
+                </h4>
+                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
+                  {selectedPromo.details.description}
                 </p>
               </div>
 
-              {/* Reviewer Meta */}
-              <div className="flex items-center justify-between border-t border-gray-100 pt-6 mt-4 gap-4 flex-wrap">
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full bg-gradient-to-tr ${testimonials[activeTestimonial]?.bg_gradient || "from-red-500 to-orange-500"} text-white font-black text-sm flex items-center justify-center shadow-inner`}>
-                    {testimonials[activeTestimonial]?.initials}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm text-brand-dark">{testimonials[activeTestimonial]?.name}</h4>
-                    <p className="text-xs text-gray-400 font-semibold">{testimonials[activeTestimonial]?.role}</p>
-                  </div>
-                </div>
-
-                {/* Slider Arrows */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={handlePrevTestimonial}
-                    className="w-10 h-10 border border-gray-200 hover:border-brand-red/30 hover:text-brand-red rounded-xl flex items-center justify-center bg-white text-gray-500 transition-all cursor-pointer"
-                    title="Testimoni Sebelumnya"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={handleNextTestimonial}
-                    className="w-10 h-10 border border-gray-200 hover:border-brand-red/30 hover:text-brand-red rounded-xl flex items-center justify-center bg-white text-gray-500 transition-all cursor-pointer"
-                    title="Testimoni Selanjutnya"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </div>
+              {/* Bullet points */}
+              <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4.5 space-y-2.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 block">
+                  Syarat & Ketentuan Promo:
+                </span>
+                <ul className="space-y-2">
+                  {selectedPromo.details.points.map((pt, i) => (
+                    <li key={i} className="flex items-start text-xs text-gray-600 gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-brand-red shrink-0 mt-0.5" />
+                      <span className="leading-snug">{pt}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
-          ) : (
-            <div className="bg-glass rounded-3xl border border-white/60 p-8 text-center text-gray-400 text-xs font-medium">
-              Belum ada testimoni yang ditampilkan saat ini.
-            </div>
-          )}
 
-          {/* Dots Indicator */}
-          {testimonials.length > 1 && (
-            <div className="flex justify-center gap-2 mt-6">
-              {testimonials.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveTestimonial(i)}
-                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${activeTestimonial === i ? "bg-brand-red w-6" : "bg-gray-300"
-                    }`}
-                  title={`Ke slide ${i + 1}`}
-                ></button>
-              ))}
-            </div>
-          )}
+              {/* QR Barcode for Birthday & WhatsApp */}
+              {selectedPromo.details.showQrCode && (
+                <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200/80 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+                  {qrCodeUrl ? (
+                    <div className="p-2 bg-white rounded-xl shadow-md border border-amber-200 shrink-0">
+                      <Image
+                        src={qrCodeUrl}
+                        alt="Scan QR Barcode WhatsApp"
+                        width={110}
+                        height={110}
+                        className="w-24 h-24"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-24 h-24 bg-white border border-dashed rounded-xl flex items-center justify-center text-xs text-gray-400">
+                      QR Barcode
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-brand-red bg-white px-2.5 py-0.5 rounded-full border border-brand-red/20 inline-block">
+                      Scan Barcode WhatsApp
+                    </span>
+                    <h5 className="font-extrabold text-xs text-gray-900">Reservasi Event & Pesta Ulang Tahun</h5>
+                    <p className="text-[11px] text-gray-600 leading-relaxed">
+                      Arahkan kamera HP Anda ke barcode ini untuk langsung terhubung ke WhatsApp reservasi kami.
+                    </p>
+                  </div>
+                </div>
+              )}
 
-        </div>
-      </section>
-
-      {/* CTA Banner Section */}
-      <section className="relative overflow-hidden bg-white py-20 md:py-28 border-t border-gray-100">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="bg-white border border-gray-100/90 rounded-3xl p-10 md:p-14 shadow-2xl text-center space-y-6 md:space-y-8">
-            <span className="bg-brand-red/10 text-brand-red font-extrabold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full inline-flex items-center gap-2 border border-brand-red/20">
-              <Building2 className="w-3.5 h-3.5 text-brand-red" />
-              PELUANG FRANCHISE WARALABA
-            </span>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight max-w-4xl mx-auto text-gray-900">
-              Tertarik Mengembangkan Outlet Bersama Kami?
-            </h2>
-            <p className="text-sm md:text-base text-gray-600 max-w-2xl mx-auto leading-relaxed font-medium">
-              Dapatkan hak lisensi merek, pasokan bumbu karamel terpusat, SOP training karyawan, dan pendampingan pemasaran berkelanjutan untuk sukses bersama.
-            </p>
-            <div className="pt-4">
-              <Link
-                href="/kemitraan"
-                className="bg-brand-orange hover:bg-brand-orange/90 text-white font-extrabold uppercase tracking-wider px-8 py-4 rounded-xl shadow-xl hover:scale-105 transition-all duration-300 inline-flex items-center gap-2 text-xs"
-              >
-                <Building2 className="w-4 h-4" />
-                Pelajari Kemitraan
-              </Link>
+              {/* Action Button */}
+              {selectedPromo.details.actionButtonText && selectedPromo.details.actionButtonUrl && (
+                <div className="pt-2">
+                  <a
+                    href={selectedPromo.details.actionButtonUrl}
+                    target={selectedPromo.details.actionButtonUrl.startsWith("http") ? "_blank" : "_self"}
+                    rel="noopener noreferrer"
+                    className="w-full bg-brand-red hover:bg-[#80000a] text-white font-extrabold uppercase tracking-widest py-3.5 rounded-xl text-xs transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                  >
+                    <span>{selectedPromo.details.actionButtonText}</span>
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      </section>
+      )}
     </div>
   );
 }
