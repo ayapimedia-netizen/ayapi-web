@@ -447,13 +447,22 @@ export default function Kemitraan() {
   const monthlyRevenue = dailySales * avgPrice * 30;
   const cogsCost = monthlyRevenue * cogsPercent;
   const grossProfit = monthlyRevenue - cogsCost;
-  const netProfit = Math.max(0, grossProfit - fixedOpsCost);
+  const rawNetProfit = grossProfit - fixedOpsCost;
+  const isLoss = rawNetProfit < 0;
+  const isBreakEven = rawNetProfit === 0;
 
-  const roiMonths = netProfit > 0 ? (initialInvestment / netProfit).toFixed(1) : "N/A";
+  // Margin per portion to calculate minimum break-even sales:
+  const marginPerPortion = avgPrice * (1 - cogsPercent);
+  const bepMonthlyPortions = marginPerPortion > 0 ? Math.ceil(fixedOpsCost / marginPerPortion) : 0;
+  const bepDailyPortions = Math.ceil(bepMonthlyPortions / 30);
+
+  const roiMonths = rawNetProfit > 0 ? (initialInvestment / rawNetProfit).toFixed(1) : null;
 
   const cogsPercentage = Math.round(rawCogsVal);
-  const opsPercentage = Math.min(100 - cogsPercentage, Math.round((fixedOpsCost / monthlyRevenue) * 100));
-  const netProfitPercentage = Math.max(0, 100 - cogsPercentage - opsPercentage);
+  const rawOpsPercentage = monthlyRevenue > 0 ? Math.round((fixedOpsCost / monthlyRevenue) * 100) : 0;
+  const opsPercentage = Math.min(100 - cogsPercentage, rawOpsPercentage);
+  const netProfitPercentage = rawNetProfit > 0 ? Math.max(0, 100 - cogsPercentage - opsPercentage) : 0;
+  const deficitPercentage = isLoss && monthlyRevenue > 0 ? Math.round((Math.abs(rawNetProfit) / monthlyRevenue) * 100) : 0;
 
   const formatCurrency = (value: number) => {
     return "Rp " + value.toLocaleString("id-ID");
@@ -957,14 +966,53 @@ export default function Kemitraan() {
                   Hasil Proyeksi Keuangan: {activeSelectedPkgObj?.name}
                 </span>
                 <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mt-2">
-                  <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                    Estimasi Balik Modal
-                  </h3>
-                  <div className="text-3xl sm:text-4xl font-black text-brand-yellow tracking-tight">
-                    ± {roiMonths} <span className="text-sm font-bold text-gray-300">Bulan</span>
+                  <div>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                      Estimasi Balik Modal
+                    </h3>
+                    {isLoss ? (
+                      <p className="text-xs text-rose-300 font-medium mt-1">
+                        Target penjualan belum menutup biaya operasional
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-300 font-medium mt-1">
+                        Berdasarkan asumsi penjualan dan biaya bulanan
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-left sm:text-right">
+                    {rawNetProfit > 0 ? (
+                      <div className="text-3xl sm:text-4xl font-black text-brand-yellow tracking-tight">
+                        ± {roiMonths} <span className="text-sm font-bold text-gray-300">Bulan</span>
+                      </div>
+                    ) : isBreakEven ? (
+                      <div className="inline-block px-3.5 py-1.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-xl text-base font-extrabold">
+                        Titik Impas (BEP)
+                      </div>
+                    ) : (
+                      <div className="inline-flex flex-col items-start sm:items-end">
+                        <span className="px-3.5 py-1.5 bg-rose-500/25 border border-rose-500/40 text-rose-300 rounded-xl text-sm sm:text-base font-extrabold tracking-wide">
+                          Belum Balik Modal
+                        </span>
+                        <span className="text-[11px] text-gray-300 font-medium mt-1">
+                          Butuh min. <strong className="text-amber-300">{bepDailyPortions} porsi/hari</strong> untuk BEP
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* Loss / Deficit Recommendation Alert */}
+              {isLoss && (
+                <div className="bg-rose-950/60 border border-rose-500/40 rounded-2xl p-4 flex items-start gap-3">
+                  <span className="text-base shrink-0 mt-0.5">⚠️</span>
+                  <div className="text-xs leading-relaxed text-rose-100">
+                    <strong className="text-white block font-bold mb-0.5">Penjualan Belum Menutup Beban Biaya:</strong>
+                    Dengan estimasi biaya operasional ({formatCurrency(fixedOpsCost)}/bln), penjualan saat ini masih di bawah titik impas. Naikkan target minimal <strong className="text-amber-300 font-bold">{bepDailyPortions} porsi/hari</strong> (atau tekan biaya sewa/operasional) untuk mulai menghasilkan laba bersih.
+                  </div>
+                </div>
+              )}
 
               {/* Key Metrics Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -980,41 +1028,74 @@ export default function Kemitraan() {
                   </span>
                 </div>
 
-                <div className="bg-brand-red/20 border border-brand-red/30 p-5 rounded-2xl">
-                  <span className="text-brand-yellow text-xs font-bold uppercase tracking-wider block mb-1">
-                    Estimasi Laba Bersih / Bulan
+                <div
+                  className={`p-5 rounded-2xl border transition-colors ${
+                    isLoss
+                      ? "bg-rose-950/40 border-rose-500/30"
+                      : isBreakEven
+                      ? "bg-amber-500/10 border-amber-500/30"
+                      : "bg-brand-red/20 border-brand-red/30"
+                  }`}
+                >
+                  <span
+                    className={`text-xs font-bold uppercase tracking-wider block mb-1 ${
+                      isLoss ? "text-rose-300" : isBreakEven ? "text-amber-400" : "text-brand-yellow"
+                    }`}
+                  >
+                    {isLoss ? "Defisit Operasional / Bulan" : "Estimasi Laba Bersih / Bulan"}
                   </span>
-                  <span className="text-xl sm:text-2xl font-black text-brand-yellow">
-                    {formatCurrency(netProfit)}
+                  <span
+                    className={`text-xl sm:text-2xl font-black ${
+                      isLoss ? "text-rose-400" : isBreakEven ? "text-amber-400" : "text-brand-yellow"
+                    }`}
+                  >
+                    {isLoss ? `- ${formatCurrency(Math.abs(rawNetProfit))}` : formatCurrency(rawNetProfit)}
                   </span>
-                  <span className="text-[10px] text-red-200 block mt-1">
-                    100% milik mitra (0% Royalty)
+                  <span className={`text-[10px] block mt-1 ${isLoss ? "text-rose-300/80 font-medium" : "text-red-200"}`}>
+                    {isLoss ? "Biaya operasional melampaui gross profit" : "100% milik mitra (0% Royalty)"}
                   </span>
                 </div>
               </div>
 
               {/* Progress Breakdown */}
               <div className="space-y-3 pt-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-gray-400 block">
-                  Struktur Biaya & Margin
-                </span>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                    Struktur Biaya & Margin
+                  </span>
+                  {isLoss && (
+                    <span className="text-[10px] font-bold text-rose-300 bg-rose-500/20 px-2 py-0.5 rounded-full border border-rose-500/30">
+                      Defisit (-{deficitPercentage}%)
+                    </span>
+                  )}
+                </div>
                 <div className="h-4 w-full bg-white/10 rounded-full overflow-hidden flex">
                   <div style={{ width: `${cogsPercentage}%` }} className="bg-red-500 h-full" title={`COGS (Bahan Baku): ${cogsPercentage}%`}></div>
-                  <div style={{ width: `${opsPercentage}%` }} className="bg-amber-500 h-full" title={`Operasional: ${opsPercentage}%`}></div>
-                  <div style={{ width: `${netProfitPercentage}%` }} className="bg-green-500 h-full" title={`Laba Bersih: ${netProfitPercentage}%`}></div>
+                  <div style={{ width: `${opsPercentage}%` }} className="bg-amber-500 h-full" title={`Operasional: ${rawOpsPercentage}%`}></div>
+                  {rawNetProfit > 0 && (
+                    <div style={{ width: `${netProfitPercentage}%` }} className="bg-green-500 h-full" title={`Laba Bersih: ${netProfitPercentage}%`}></div>
+                  )}
                 </div>
-                <div className="flex justify-between text-[11px] text-gray-300 font-semibold pt-1">
+                <div className="flex flex-wrap justify-between gap-y-1 text-[11px] text-gray-300 font-semibold pt-1">
                   <div className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
                     <span>Bahan Baku ({cogsPercentage}%)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    <span>Operasional ({opsPercentage}%)</span>
+                    <span>Operasional ({rawOpsPercentage}%)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                    <span>Net Margin ({netProfitPercentage}%)</span>
+                    <span
+                      className={`w-2.5 h-2.5 rounded-full ${
+                        isLoss ? "bg-rose-500" : isBreakEven ? "bg-amber-400" : "bg-green-500"
+                      }`}
+                    ></span>
+                    {isLoss ? (
+                      <span className="text-rose-400 font-bold">Defisit (-{deficitPercentage}%)</span>
+                    ) : (
+                      <span>Net Margin ({netProfitPercentage}%)</span>
+                    )}
                   </div>
                 </div>
               </div>
