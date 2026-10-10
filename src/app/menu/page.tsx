@@ -380,13 +380,13 @@ export default function Menu() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-wrap justify-center gap-6 md:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {filteredItems.map((item, index) => {
               const cartItem = cart.find((ci) => ci.item.name === item.name);
               return (
                 <div
                   key={index}
-                  className="bg-white rounded-3xl overflow-hidden shadow-premium hover:shadow-premium-hover hover-scale-premium border border-gray-200/60 flex flex-col justify-between group w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.5rem)] max-w-md"
+                  className="bg-white rounded-3xl overflow-hidden shadow-premium hover:shadow-premium-hover hover-scale-premium border border-gray-200/60 flex flex-col justify-between group h-full"
                 >
                   {/* Image Section */}
                   <div className="relative w-full aspect-[4/3] bg-gray-100 overflow-hidden shrink-0">
@@ -396,7 +396,7 @@ export default function Menu() {
                       fill
                       loading="lazy"
                       className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-                      sizes="(max-w-768px) 100vw, (max-w-1200px) 50vw, 33vw"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                     {/* Category Badge */}
                     <span className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-brand-red text-[10px] font-bold tracking-wider px-3 py-1 rounded-full shadow-sm uppercase">
@@ -423,7 +423,7 @@ export default function Menu() {
                           {item.price}
                         </span>
                       </div>
-                      <p className="text-gray-500 text-xs leading-relaxed mb-6 text-justify line-clamp-3">
+                      <p className="text-gray-500 text-xs leading-relaxed mb-6 line-clamp-3">
                         {item.description}
                       </p>
                     </div>

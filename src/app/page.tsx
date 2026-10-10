@@ -276,21 +276,21 @@ export default function Home() {
               price: "Rp 22.000",
               description: "Ayam krispi bakar bumbu karamel smoky rahasia Ayapi + Nasi hangat pulen + Lalapan segar.",
               category: "utama",
-              image: "/hero/slide-3-krisbar.jpg",
+              image: "/menu/menu-krisbar-utama.jpg",
             },
             {
               name: "Paket Viral 1 (Ayam Biasa / Sayap)",
               price: "Rp 16.000",
               description: "Nasi hangat pulen + Ayam goreng renyah bumbu marinasi khas + Sambal korek bawang segar.",
               category: "utama",
-              image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1786456730256-g1ihmd.webp",
+              image: "/menu/menu-viral-sayap.jpg",
             },
             {
-              name: "Paket FC 1 + Es Teh",
-              price: "Rp 15.000",
-              description: "Paket Pelajar Hemat: Paha bawah / sayap renyah + Nasi putih + Es teh manis segar.",
+              name: "Paket Viral 2 (Paha Atas / Dada)",
+              price: "Rp 22.000",
+              description: "Nasi hangat + Potongan ayam paha atas/dada juicy renyah + Sambal geprek bawang nampol.",
               category: "utama",
-              image: "/promos/promo-spesial-pelajar.jpg",
+              image: "/menu/menu-viral-geprek.jpg",
             },
           ]);
         }
@@ -578,19 +578,19 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-8 md:gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {featuredItems.map((item, index) => (
               <div
                 key={index}
-                className="bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden flex flex-col justify-between group hover:shadow-2xl transition-all duration-300 w-full md:w-[calc(50%-1.25rem)] lg:w-[calc(33.333%-1.75rem)] max-w-md"
+                className="bg-white rounded-3xl border border-gray-100 shadow-lg overflow-hidden flex flex-col justify-between group hover:shadow-2xl transition-all duration-300 h-full"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100 shrink-0">
                   <Image
                     src={item.image}
                     alt={item.name}
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    sizes="(max-w-768px) 100vw, (max-w-1200px) 50vw, 33vw"
+                    className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />
                   <div className="absolute top-4 left-4 bg-brand-red text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-md">
                     Favorit
@@ -602,7 +602,7 @@ export default function Home() {
                     <h3 className="font-extrabold text-lg text-brand-dark group-hover:text-brand-red transition-colors line-clamp-1">
                       {item.name}
                     </h3>
-                    <p className="text-xs text-gray-500 leading-relaxed mt-2 text-justify line-clamp-2">
+                    <p className="text-xs text-gray-500 leading-relaxed mt-2 line-clamp-2">
                       {item.description}
                     </p>
                   </div>
