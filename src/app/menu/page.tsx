@@ -62,9 +62,12 @@ export default function Menu() {
 
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([
     { id: "all", name: "Semua Menu" },
-    { id: "utama", name: "Menu Utama" },
-    { id: "camilan", name: "Menu Camilan" },
-    { id: "minuman", name: "Menu Minuman" },
+    { id: "krisbar", name: "Krispy Bakar (Kirbar)" },
+    { id: "krispy", name: "Satset Krispy" },
+    { id: "geprek", name: "Paket Geprek" },
+    { id: "patungan", name: "Paket Rame-Rame & Utuh" },
+    { id: "minuman", name: "Aneka Minuman" },
+    { id: "sambal", name: "Pilihan Sambal" },
   ]);
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);

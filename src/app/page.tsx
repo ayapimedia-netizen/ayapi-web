@@ -272,25 +272,25 @@ export default function Home() {
           // Default fallbacks with real images
           setFeaturedItems([
             {
-              name: "Paket Ayam Krispi Bakar (Krisbar)",
-              price: "Rp 22.000",
-              description: "Ayam krispi bakar bumbu karamel smoky rahasia Ayapi + Nasi hangat pulen + Lalapan segar.",
-              category: "utama",
+              name: "Viral Krisbar 1",
+              price: "Rp 29.000",
+              description: "Nasi hangat pulen + Ayam Paha Bawah/Sayap bakar bumbu khas Ayapi + Minuman segar.",
+              category: "krisbar",
               image: "/menu/menu-krisbar-utama.jpg",
             },
             {
-              name: "Paket Viral 1 (Ayam Biasa / Sayap)",
-              price: "Rp 16.000",
-              description: "Nasi hangat pulen + Ayam goreng renyah bumbu marinasi khas + Sambal korek bawang segar.",
-              category: "utama",
-              image: "/menu/menu-viral-sayap.jpg",
+              name: "Viral Krisbar 2",
+              price: "Rp 32.000",
+              description: "Nasi hangat pulen + Ayam Paha Atas/Dada bakar bumbu karamel smoky khas Ayapi + Minuman segar.",
+              category: "krisbar",
+              image: "/menu/menu-krisbar-utama.jpg",
             },
             {
-              name: "Paket Viral 2 (Paha Atas / Dada)",
-              price: "Rp 22.000",
-              description: "Nasi hangat + Potongan ayam paha atas/dada juicy renyah + Sambal geprek bawang nampol.",
-              category: "utama",
-              image: "/menu/menu-viral-geprek.jpg",
+              name: "Paket Satset Krisbar Double",
+              price: "Rp 39.000",
+              description: "Nasi hangat + 1 Paha Bawah/Sayap + 1 Paha Atas/Dada + Minuman + 1 varian sambal porsi double.",
+              category: "krisbar",
+              image: "/menu/menu-krisbar-lava.jpg",
             },
           ]);
         }
