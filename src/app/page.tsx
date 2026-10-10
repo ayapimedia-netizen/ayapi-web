@@ -189,8 +189,8 @@ const promoItems: PromoItem[] = [
     badge: "💼 BISNIS KULINER",
     title: "KEMITRAAN",
     desc: "Dapatkan harga spesial untuk kemitraan",
-    image: "/hero/slide-2-mitra.jpg",
-    bannerImage: "/hero/slide-2-mitra.jpg",
+    image: "/promos/promo-kemitraan.jpg",
+    bannerImage: "/promos/promo-kemitraan.jpg",
     ctaText: "See More",
     actionType: "link",
     linkUrl: "/kemitraan",
@@ -204,6 +204,27 @@ const promoItems: PromoItem[] = [
       ],
       actionButtonText: "Buka Halaman Kemitraan",
       actionButtonUrl: "/kemitraan",
+    },
+  },
+  {
+    id: "paket-keluarga",
+    badge: "🍗 PAKET RAME-RAME",
+    title: "PAKET KELUARGA & BUCKET",
+    desc: "Makan kenyang bareng keluarga & teman lebih hemat",
+    image: "/promos/promo-paket-keluarga.jpg",
+    bannerImage: "/promos/promo-paket-keluarga.jpg",
+    ctaText: "See More",
+    actionType: "modal",
+    details: {
+      highlight: "Kenyang Rame-Rame, Makin Akrab Bareng Ayapi!",
+      description: "Pilihan pas untuk kumpul keluarga, rekan kerja, atau nobar! Dapatkan 1 Bucket Ayam Krisbar renyah lengkap dengan porsi nasi dan es teh jumbo dengan harga spesial.",
+      points: [
+        "1 Bucket Isi 8 Potong Ayam Krispi Renyah Gurih",
+        "Lengkap dengan 4 Nasi Putih + 4 Es Teh Manis Segar",
+        "Ekstra sambal pilihan (Sambal Korek / Sambal Krisbar)",
+      ],
+      actionButtonText: "Pesan Paket Rame-Rame via WhatsApp",
+      actionButtonUrl: "https://wa.me/628213444730?text=Halo%20Ayapi!%20Saya%20ingin%20pesan%20Paket%20Rame-Rame%20Keluarga",
     },
   },
 ];
@@ -478,24 +499,24 @@ export default function Home() {
           </div>
 
           {/* PROMO CARDS GRID */}
-          <div className="flex flex-wrap justify-center gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {promoItems.map((promo) => (
               <div
                 key={promo.id}
-                className="bento-card bg-white border border-gray-100 rounded-3xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group overflow-hidden w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.5rem)] max-w-md"
+                className="bento-card bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group overflow-hidden h-full"
               >
                 <div className="flex flex-col flex-grow">
                   {/* Thumbnail / Visual */}
-                  <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden mb-5 bg-gray-50 border border-gray-100 shrink-0">
+                  <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden mb-5 bg-gray-100 border border-gray-100 shrink-0 shadow-inner">
                     <Image
                       src={promo.image}
                       alt={promo.title}
                       fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      sizes="(max-w-768px) 100vw, (max-w-1200px) 50vw, 33vw"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                    <span className="absolute top-3 left-3 bg-brand-red text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none"></div>
+                    <span className="absolute top-3 left-3 bg-brand-red/95 backdrop-blur-sm text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
                       {promo.badge}
                     </span>
                   </div>
@@ -503,14 +524,15 @@ export default function Home() {
                   <h3 className="font-black text-xl text-gray-900 mb-2 group-hover:text-brand-red transition-colors line-clamp-1">
                     {promo.title}
                   </h3>
-                  <p className="text-gray-600 text-xs sm:text-sm leading-relaxed font-medium text-justify">
+                  <p className="text-gray-600 text-xs sm:text-sm leading-relaxed font-medium">
                     {promo.desc}
                   </p>
                 </div>
 
-                <div className="pt-6 border-t border-gray-100 mt-6 flex items-center justify-between">
-                  <span className="text-[11px] font-extrabold text-brand-red uppercase tracking-wider">
-                    {promo.badge}
+                <div className="pt-5 border-t border-gray-100 mt-5 flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-brand-red uppercase tracking-wider">
+                    <Sparkles className="w-3.5 h-3.5 text-brand-orange" />
+                    <span>Promo Spesial</span>
                   </span>
 
                   {promo.actionType === "link" ? (
