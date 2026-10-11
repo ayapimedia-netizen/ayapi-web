@@ -62,7 +62,7 @@ function sha256(str: string): string {
  */
 export function getSecureSessionToken(): string {
   const adminUser = process.env.ADMIN_USERNAME || "admin";
-  const adminPass = process.env.ADMIN_PASSWORD || "admin123";
+  const adminPass = process.env.ADMIN_PASSWORD || "m1n66A61lAA";
   const secret = process.env.SESSION_SECRET || "ayapi-fallback-secure-salt-key-999";
   
   return sha256(`${adminUser}:${adminPass}:${secret}`);
@@ -70,7 +70,7 @@ export function getSecureSessionToken(): string {
 
 export function getSecureSessionTokenWithTimestamp(timestamp: number): string {
   const adminUser = process.env.ADMIN_USERNAME || "admin";
-  const adminPass = process.env.ADMIN_PASSWORD || "admin123";
+  const adminPass = process.env.ADMIN_PASSWORD || "m1n66A61lAA";
   const secret = process.env.SESSION_SECRET || "ayapi-fallback-secure-salt-key-999";
   
   return sha256(`${adminUser}:${adminPass}:${secret}:${timestamp}`);

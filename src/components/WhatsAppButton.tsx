@@ -1,28 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { getAllSiteSettings } from "@/app/actions";
 
 export default function WhatsAppButton() {
   const pathname = usePathname();
-  const [waNumber, setWaNumber] = useState<string>(
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730"
-  );
-
-  useEffect(() => {
-    getAllSiteSettings().then((settings) => {
-      if (settings?.wa_number) {
-        let cleanNumber = settings.wa_number.replace(/\D/g, "");
-        if (cleanNumber.startsWith("0")) {
-          cleanNumber = "62" + cleanNumber.substring(1);
-        }
-        if (cleanNumber) {
-          setWaNumber(cleanNumber);
-        }
-      }
-    }).catch(() => {});
-  }, []);
+  const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
 
   const defaultMessage = encodeURIComponent("Halo Ayapi Krispi Bakar, saya ingin bertanya tentang menu / kemitraan.");
   const waUrl = `https://wa.me/${waNumber}?text=${defaultMessage}`;

@@ -38,14 +38,14 @@ const defaultPackages: PackageDetail[] = [
     priceText: "15 JUTA*",
     priceValue: 15000000,
     originalPrice: "20 JUTA",
-    dimensions: "125 x 60 x 200 cm",
+    dimensions: "120 x 80 x 200 cm",
     group: "express",
     description:
-      "Lebih Ringkas, Tetap Menarik! Dimensi Rombong: 100 x 60 x 160 cm. Konsep praktis, hemat tempat, cocok untuk pemula dan lokasi padat lalu lintas.",
+      "Lebih Ringkas, Tetap Menarik! Dimensi Rombong: 120 x 80 x 200 cm. Konsep praktis, hemat tempat, cocok untuk pemula dan lokasi padat lalu lintas.",
     badge: "Budget Friendly",
-    image: "/packages/booth-kuning-1.jpg",
+    image: "/packages/booth-express-1.jpg",
     inclusions: [
-      "Rombong Express Ringkas (125 x 60 x 200 cm)",
+      "Rombong Express Ringkas (120 x 80 x 200 cm)",
       "Peralatan Lengkap & Display Etalase Luas",
       "Starter Kit Bahan Baku Skala Menengah",
       "Media Promosi Lengkap & Branding Eksklusif",
@@ -66,7 +66,7 @@ const defaultPackages: PackageDetail[] = [
     description:
       "Rombong Lebih Luas, Tampilan Lebih Maksimal! Dimensi Rombong: 125 x 60 x 200 cm. Kapasitas display etalase lebih luas untuk omzet harian lebih tinggi.",
     badge: "Best Value!",
-    image: "/packages/booth-kuning-2.jpg",
+    image: "/packages/booth-express-2.jpg",
     inclusions: [
       "Rombong Express Ringkas (125 x 60 x 200 cm)",
       "Peralatan Lengkap & Display Etalase Luas",
@@ -78,34 +78,9 @@ const defaultPackages: PackageDetail[] = [
     ],
   },
   {
-    id: "resto-1",
-    package_key: "resto-1",
-    name: "Paket Resto 1",
-    priceText: "90 JUTA*",
-    priceValue: 90000000,
-    originalPrice: "100 JUTA",
-    dimensions: "4 x 6 METER",
-    group: "resto",
-    description:
-      "Resto minimalis & fungsional. Ukuran: 4 x 6 METER. Solusi ideal menghadirkan pengalaman dine-in hemat namun tetap nyaman dan estetik.",
-    badge: "Resto Minimalis",
-    image: "/packages/resto-outlet-1.jpg",
-    inclusions: [
-      "Layout Outlet Minimalis & Fungsional (4 x 6 M)",
-      "Set Meja & Kursi Dine-in Pelanggan",
-      "Set Peralatan Resto & Dapur Lengkap",
-      "Starter Kit Bahan Baku & Bumbu Rempah",
-      "Sistem POS Kasir & Pelatihan Komprehensif",
-      "Media Promosi Lengkap & Branding Eksklusif",
-      "Terdaftar di Platform Pesan Antar Online",
-      "Pendampingan operasional",
-      "Kampanye Marketing & Influencer Launching",
-    ],
-  },
-  {
     id: "resto-2",
     package_key: "resto-2",
-    name: "Paket Resto 2",
+    name: "Paket Mini Resto",
     priceText: "135 JUTA*",
     priceValue: 135000000,
     originalPrice: "150 JUTA",
@@ -113,7 +88,7 @@ const defaultPackages: PackageDetail[] = [
     group: "resto",
     description:
       "Resto modern & lebih luas. Ukuran: 5 x 7 METER. Menampung lebih banyak pelanggan dengan atmosfer modern dan operasional yang efisien.",
-    badge: "Resto Modern",
+    badge: "Mini Resto",
     image: "/packages/resto-outlet-2.jpg",
     inclusions: [
       "Layout Outlet Modern & Luas (5 x 7 M)",
@@ -130,7 +105,7 @@ const defaultPackages: PackageDetail[] = [
   {
     id: "resto-3",
     package_key: "resto-3",
-    name: "Paket Resto 3",
+    name: "Paket Resto",
     priceText: "180 JUTA*",
     priceValue: 180000000,
     originalPrice: "200 JUTA",
@@ -138,7 +113,7 @@ const defaultPackages: PackageDetail[] = [
     group: "resto",
     description:
       "Resto premium & full experience. Ukuran: 6 x 8 METER. Konsep flagship resto dengan kapasitas maksimal, interior mewah, dan pengalaman kuliner terlengkap.",
-    badge: "Full Experience",
+    badge: "Flagship Resto",
     image: "/packages/resto-outlet-3.jpg",
     inclusions: [
       "Desain Interior & Renovasi Full Experience (6 x 8 M)",
@@ -338,12 +313,7 @@ export default function Kemitraan() {
       setCustomRent(1800000);
       setCustomSalaries(3500000);
       setCustomUtilities(1800000);
-    } else if (pkgKey.includes("resto-1") || pkgKey === "resto-1") {
-      setDailySales(160);
-      setCustomRent(4000000);
-      setCustomSalaries(6000000);
-      setCustomUtilities(2500000);
-    } else if (pkgKey.includes("resto-2") || pkgKey === "resto-2") {
+    } else if (pkgKey.includes("resto-2") || pkgKey.toLowerCase().includes("mini")) {
       setDailySales(220);
       setCustomRent(7000000);
       setCustomSalaries(9000000);
@@ -434,11 +404,9 @@ export default function Kemitraan() {
       ? 4900000
       : selectedPackage.includes("express-2")
         ? 7100000
-        : selectedPackage.includes("resto-1")
-          ? 12500000
-          : selectedPackage.includes("resto-2")
-            ? 20000000
-            : 32000000;
+        : selectedPackage.includes("resto-2") || selectedPackage.toLowerCase().includes("mini")
+          ? 20000000
+          : 32000000;
 
   const rawCogsVal = siteSettings.roi_cogs_percent ? parseFloat(siteSettings.roi_cogs_percent) : 55;
   const cogsPercent = rawCogsVal / 100;

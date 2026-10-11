@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { getMenuItems, getBranches, getCategories, getAllSiteSettings, MenuItem, Branch, createOrder } from "@/app/actions";
+import { getMenuItems, getBranches, getCategories, MenuItem, Branch, createOrder } from "@/app/actions";
 import CustomSelect from "@/components/CustomSelect";
 
 type CartItem = {
@@ -21,6 +21,7 @@ export default function Menu() {
   const [orderNotes, setOrderNotes] = useState("");
   const [selectedOjolBranchIndex, setSelectedOjolBranchIndex] = useState<number>(0);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
+  const [isLoadingMenu, setIsLoadingMenu] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -58,7 +59,6 @@ export default function Menu() {
     }
   }, [cart]);
 
-  const [orderWaNumber, setOrderWaNumber] = useState<string>("628213444730");
   const [branches, setBranches] = useState<Branch[]>([]);
 
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([
@@ -76,11 +76,10 @@ export default function Menu() {
   useEffect(() => {
     const fetchMenuAndBranches = async () => {
       try {
-        const [items, branchList, categoriesList, settingsData] = await Promise.all([
+        const [items, branchList, categoriesList] = await Promise.all([
           getMenuItems(),
           getBranches(),
           getCategories(),
-          getAllSiteSettings().catch(() => null),
         ]);
         setMenuItems(items || []);
         if (branchList.length > 0) {
@@ -95,15 +94,11 @@ export default function Menu() {
             ...categoriesList.map((c) => ({ id: c.key, name: c.name })),
           ]);
         }
-        if (settingsData?.wa_number) {
-          let clean = settingsData.wa_number.replace(/\D/g, "");
-          if (clean.startsWith("0")) clean = "62" + clean.substring(1);
-          if (clean) setOrderWaNumber(clean);
-        }
       } catch (err) {
         console.error("Gagal memuat menu, cabang, dan kategori:", err);
       } finally {
         setIsLoadingBranches(false);
+        setIsLoadingMenu(false);
       }
     };
     fetchMenuAndBranches();
@@ -211,8 +206,8 @@ export default function Menu() {
         (orderNotes.trim() ? `*Catatan:* ${orderNotes.trim()}\n` : "") +
         `\nMohon segera diproses ya. Terima kasih!`;
 
-      const targetWaNumber = orderWaNumber || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
-      const waUrl = `https://wa.me/${targetWaNumber}?text=${encodeURIComponent(messageTemplate)}`;
+      const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
+      const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(messageTemplate)}`;
 
       setCart([]);
       setOrderName("");
@@ -379,14 +374,26 @@ export default function Menu() {
         </div>
 
         {/* Menu Grid */}
-        {filteredItems.length === 0 ? (
+        {isLoadingMenu ? (
+          <div className="text-center py-20 bg-white/80 backdrop-blur-md rounded-3xl border border-gray-200/80 max-w-md mx-auto shadow-sm">
+            <div className="w-12 h-12 border-4 border-brand-red border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <h3 className="font-bold text-gray-900 text-lg mb-1">Memuat Menu...</h3>
+            <p className="text-gray-500 text-xs max-w-xs mx-auto">
+              Sedang menyiapkan daftar menu lezat Ayapi untuk Anda.
+            </p>
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="text-center py-16 bg-white/80 backdrop-blur-md rounded-3xl border border-gray-200/80 max-w-md mx-auto shadow-sm">
             <div className="w-16 h-16 bg-brand-red/10 text-brand-red rounded-full flex items-center justify-center mx-auto mb-4 font-bold text-2xl">
               🍗
             </div>
-            <h3 className="font-bold text-gray-900 text-lg mb-1">Belum Ada Menu</h3>
+            <h3 className="font-bold text-gray-900 text-lg mb-1">
+              {searchQuery ? "Menu Tidak Ditemukan" : "Belum Ada Menu"}
+            </h3>
             <p className="text-gray-500 text-xs max-w-xs mx-auto">
-              Saat ini belum ada menu yang tersedia pada kategori ini.
+              {searchQuery
+                ? `Tidak ada menu yang sesuai dengan kata kunci "${searchQuery}".`
+                : "Saat ini belum ada menu yang tersedia pada kategori ini."}
             </p>
           </div>
         ) : (
