@@ -9,22 +9,20 @@ export default function Kontak() {
   const [step, setStep] = useState(1);
   const [branches, setBranches] = useState<Branch[]>([
     {
-      name: "Ayapi Tebet, Jakarta Selatan",
-      gofood: "",
-      grabfood: "",
-      shopeefood: "",
+      name: "Ayapi Tukad Pakerisan, Denpasar",
+      gofood: "https://gofood.link/a/PABFrjm",
+      grabfood: "https://r.grab.com/g/6-20260811_211556_6092d3ee154e43e3a28b3a2c4b3e3706_MEXMPS-6-C7BBCVAYJP5VAE",
+      shopeefood: "https://shopee.co.id/universal-link/now-food/shop/21754203?deep_and_deferred=1&shareChannel=copy_link",
+      open_time: "10:00",
+      close_time: "01:00",
     },
     {
-      name: "Ayapi Margonda, Depok",
-      gofood: "",
-      grabfood: "",
-      shopeefood: "",
-    },
-    {
-      name: "Ayapi Dago, Bandung",
-      gofood: "",
-      grabfood: "",
-      shopeefood: "",
+      name: "Ayapi Taman Griya, Jimbaran",
+      gofood: "https://gofood.link/a/yM9cRsq",
+      grabfood: "https://r.grab.com/g/6-20260811_211615_6092d3ee154e43e3a28b3a2c4b3e3706_MEXMPS-6-C2TFSCJJCUXKNE",
+      shopeefood: "https://shopee.co.id/universal-link/now-food/shop/1145704?deep_and_deferred=1&shareChannel=copy_link",
+      open_time: "00:00",
+      close_time: "23:59",
     },
   ]);
 
@@ -53,11 +51,17 @@ export default function Kontak() {
   const waNumber = siteSettings.wa_number || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
   const formattedWaNumber = siteSettings.wa_number_formatted || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER_FORMATTED || "+62 821-3444-730";
   const csEmail = siteSettings.cs_email || "ayapihr@gmail.com";
-  const hqAddress = siteSettings.headquarter_address || "Jl. Diponegoro No.177, Dauh Puri Klod, Kec. Denpasar Bar., Kota Denpasar, Bali 80113";
+  const hqAddress = siteSettings.headquarter_address || "Jl. Tukad Pakerisan No.96, Dauh Puri Klod, Kec. Denpasar Barat, Kota Denpasar, Bali";
 
 
   const getBranchAddress = (name: string) => {
     const lowercaseName = name.toLowerCase();
+    if (lowercaseName.includes("tukad pakerisan") || lowercaseName.includes("pakerisan") || lowercaseName.includes("denpasar")) {
+      return "Jl. Tukad Pakerisan No.96, Dauh Puri Klod, Kec. Denpasar Barat, Kota Denpasar, Bali";
+    }
+    if (lowercaseName.includes("taman griya") || lowercaseName.includes("jimbaran")) {
+      return "Jl. Danau Batur Raya, Taman Griya, Jimbaran, Kec. Kuta Selatan, Kabupaten Badung, Bali";
+    }
     if (lowercaseName.includes("tebet")) {
       return "Jl. Tebet Raya No. 45, Tebet Timur, Jakarta Selatan, DKI Jakarta 12820";
     }
@@ -72,6 +76,8 @@ export default function Kontak() {
 
   const getBranchRegion = (name: string) => {
     const lowercaseName = name.toLowerCase();
+    if (lowercaseName.includes("tukad pakerisan") || lowercaseName.includes("pakerisan") || lowercaseName.includes("denpasar")) return "Cabang Denpasar";
+    if (lowercaseName.includes("jimbaran") || lowercaseName.includes("taman griya")) return "Cabang Jimbaran";
     if (lowercaseName.includes("bandung") || lowercaseName.includes("dago")) return "Cabang Bandung";
     if (lowercaseName.includes("depok") || lowercaseName.includes("margonda")) return "Cabang Depok";
     if (lowercaseName.includes("jakarta") || lowercaseName.includes("tebet")) return "Cabang Jakarta Selatan";

@@ -274,7 +274,7 @@ INSERT INTO public.settings (key, value) VALUES
   ('wa_number', '628213444730'),
   ('wa_number_formatted', '+62 821-3444-730'),
   ('cs_email', 'ayapihr@gmail.com'),
-  ('headquarter_address', 'Jl. Diponegoro No.177, Dauh Puri Klod, Kec. Denpasar Bar., Kota Denpasar, Bali 80113'),
+  ('headquarter_address', 'Jl. Tukad Pakerisan No.96, Dauh Puri Klod, Kec. Denpasar Barat, Kota Denpasar, Bali'),
   ('instagram_url', 'https://instagram.com/ayapikrispibar'),
   ('tiktok_url', 'https://tiktok.com/@ayapikrispibar'),
   ('halal_cert_number', 'ID3111000012345'),

@@ -23,7 +23,7 @@ export default function Footer() {
 
   const formattedWaNumber = siteSettings.wa_number_formatted || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER_FORMATTED || "+62 821-3444-730";
   const csEmail = siteSettings.cs_email || "ayapihr@gmail.com";
-  const address = siteSettings.headquarter_address || "Jl. Diponegoro No.177, Dauh Puri Klod, Kec. Denpasar Bar., Kota Denpasar, Bali 80113";
+  const address = siteSettings.headquarter_address || "Jl. Tukad Pakerisan No.96, Dauh Puri Klod, Kec. Denpasar Barat, Kota Denpasar, Bali";
 
 
   // Hide Footer on links and admin pages

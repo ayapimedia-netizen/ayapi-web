@@ -959,28 +959,20 @@ export async function uploadImage(formData: FormData): Promise<{ url: string }> 
 
 const fallbackBranches: Branch[] = [
   {
-    name: "Ayapi Tebet, Jakarta Selatan",
-    gofood: "https://gofood.link/a/FghJkL",
-    grabfood: "https://r.grab.com/g/f/3-C2JDTX5JFAK8JA",
-    shopeefood: "https://shopee.co.id/universal-link/now-food/shop/1002345",
+    name: "Ayapi Tukad Pakerisan, Denpasar",
+    gofood: "https://gofood.link/a/PABFrjm",
+    grabfood: "https://r.grab.com/g/6-20260811_211556_6092d3ee154e43e3a28b3a2c4b3e3706_MEXMPS-6-C7BBCVAYJP5VAE",
+    shopeefood: "https://shopee.co.id/universal-link/now-food/shop/21754203?deep_and_deferred=1&shareChannel=copy_link",
     open_time: "10:00",
-    close_time: "22:00",
+    close_time: "01:00",
   },
   {
-    name: "Ayapi Margonda, Depok",
-    gofood: "https://gofood.link/a/AbCdEf",
-    grabfood: "https://r.grab.com/g/f/3-D8YTRN2K9DJ2KD",
-    shopeefood: "https://shopee.co.id/universal-link/now-food/shop/1002346",
-    open_time: "10:00",
-    close_time: "22:00",
-  },
-  {
-    name: "Ayapi Dago, Bandung",
-    gofood: "https://gofood.link/a/XyZ123",
-    grabfood: "https://r.grab.com/g/f/3-F9KLJNDK3JD9DK",
-    shopeefood: "https://shopee.co.id/universal-link/now-food/shop/1002347",
-    open_time: "10:00",
-    close_time: "22:00",
+    name: "Ayapi Taman Griya, Jimbaran",
+    gofood: "https://gofood.link/a/yM9cRsq",
+    grabfood: "https://r.grab.com/g/6-20260811_211615_6092d3ee154e43e3a28b3a2c4b3e3706_MEXMPS-6-C2TFSCJJCUXKNE",
+    shopeefood: "https://shopee.co.id/universal-link/now-food/shop/1145704?deep_and_deferred=1&shareChannel=copy_link",
+    open_time: "00:00",
+    close_time: "23:59",
   },
 ];
 
@@ -2300,7 +2292,7 @@ const fallbackSettings: Record<string, string> = {
   wa_number: "628213444730",
   wa_number_formatted: "+62 821-3444-730",
   cs_email: "ayapihr@gmail.com",
-  headquarter_address: "Jl. Diponegoro No.177, Dauh Puri Klod, Kec. Denpasar Bar., Kota Denpasar, Bali 80113",
+  headquarter_address: "Jl. Tukad Pakerisan No.96, Dauh Puri Klod, Kec. Denpasar Barat, Kota Denpasar, Bali",
   instagram_url: "https://instagram.com/ayapikrispibar",
   tiktok_url: "https://tiktok.com/@ayapikrispibar",
   halal_cert_number: "ID3111000012345",

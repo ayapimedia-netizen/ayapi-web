@@ -60,7 +60,7 @@ export default function RootLayout({
     "servesCuisine": "Indonesian",
     "address": {
       "@type": "PostalAddress",
-      "streetAddress": "Jl. Diponegoro No.177, Dauh Puri Klod, Kec. Denpasar Bar.",
+      "streetAddress": "Jl. Tukad Pakerisan No.96, Dauh Puri Klod, Kec. Denpasar Barat",
       "addressLocality": "Kota Denpasar",
       "addressRegion": "Bali",
       "postalCode": "80113",

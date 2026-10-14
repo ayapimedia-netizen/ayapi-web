@@ -298,7 +298,7 @@ export default function AdminDashboard() {
   const [settingWaNumber, setSettingWaNumber] = useState("628213444730");
   const [settingWaFormatted, setSettingWaFormatted] = useState("+62 821-3444-730");
   const [settingCsEmail, setSettingCsEmail] = useState("ayapihr@gmail.com");
-  const [settingAddress, setSettingAddress] = useState("Jl. Diponegoro No.177, Dauh Puri Klod, Kec. Denpasar Bar., Kota Denpasar, Bali 80113");
+  const [settingAddress, setSettingAddress] = useState("Jl. Tukad Pakerisan No.96, Dauh Puri Klod, Kec. Denpasar Barat, Kota Denpasar, Bali");
   const [settingInstagram, setSettingInstagram] = useState("https://instagram.com/ayapikrispibar");
   const [settingTiktok, setSettingTiktok] = useState("https://tiktok.com/@ayapikrispibar");
   const [settingHalal, setSettingHalal] = useState("ID3111000012345");
@@ -3276,7 +3276,7 @@ export default function AdminDashboard() {
                         required
                         value={settingAddress}
                         onChange={(e) => setSettingAddress(e.target.value)}
-                        placeholder="Contoh: Jl. Diponegoro No.177, Dauh Puri Klod, Kec. Denpasar Bar., Kota Denpasar, Bali 80113"
+                        placeholder="Contoh: Jl. Tukad Pakerisan No.96, Dauh Puri Klod, Kec. Denpasar Barat, Kota Denpasar, Bali"
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
                       />
                     </div>
