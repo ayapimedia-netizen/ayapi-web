@@ -21,7 +21,9 @@ export default function Footer() {
     });
   }, []);
 
-  const formattedWaNumber = siteSettings.wa_number_formatted || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER_FORMATTED || "+62 821-3444-730";
+  const formattedWaNumber = siteSettings.wa_number_formatted && !siteSettings.wa_number_formatted.includes("877")
+    ? siteSettings.wa_number_formatted
+    : "+62 821-3444-730";
   const csEmail = siteSettings.cs_email || "ayapihr@gmail.com";
   const address = siteSettings.headquarter_address || "Jl. Tukad Pakerisan No.96, Dauh Puri Klod, Kec. Denpasar Barat, Kota Denpasar, Bali";
 

@@ -25,6 +25,7 @@ export default function Menu() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [orderSuccessUrl, setOrderSuccessUrl] = useState<string | null>(null);
 
   // Auto-dismiss toast message
   useEffect(() => {
@@ -206,15 +207,20 @@ export default function Menu() {
         (orderNotes.trim() ? `*Catatan:* ${orderNotes.trim()}\n` : "") +
         `\nMohon segera diproses ya. Terima kasih!`;
 
-      const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
+      const waNumber = "628213444730";
       const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(messageTemplate)}`;
 
       setCart([]);
       setOrderName("");
       setOrderNotes("");
       setIsCartOpen(false);
+      setOrderSuccessUrl(waUrl);
 
-      window.open(waUrl, "_blank");
+      // Attempt to open in a new tab, but fallback to direct navigation if popup is blocked
+      const opened = window.open(waUrl, "_blank");
+      if (!opened || opened.closed || typeof opened.closed === "undefined") {
+        window.location.href = waUrl;
+      }
     } catch (err) {
       console.error("Gagal mencatat pesanan:", err);
       alert("Terjadi kesalahan sistem saat memproses pesanan. Silakan coba beberapa saat lagi.");
@@ -242,6 +248,45 @@ export default function Menu() {
         <div className="fixed top-24 sm:top-28 left-1/2 -translate-x-1/2 z-50 animate-fade-in pointer-events-none">
           <div className="bg-emerald-600 text-white font-extrabold text-[10px] sm:text-xs uppercase tracking-widest px-5 py-3 rounded-full shadow-lg flex items-center gap-2 border border-emerald-500/20 backdrop-blur-md">
             <span>{toastMessage}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Order Success WhatsApp Modal (Anti Popup-Blocker) */}
+      {orderSuccessUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl text-center space-y-4 border border-gray-100">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-3xl font-black shadow-inner">
+              ✓
+            </div>
+            <div>
+              <h3 className="text-xl font-extrabold text-brand-dark mb-1">Pesanan Anda Siap!</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Jika WhatsApp tidak terbuka secara otomatis (pop-up terblokir oleh browser), silakan klik tombol hijau di bawah untuk melanjutkan chat:
+              </p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
+              <span className="text-[10px] font-bold text-gray-400 block uppercase tracking-wider">WhatsApp Resmi AYAPI:</span>
+              <span className="text-sm font-extrabold text-brand-dark">+62 821-3444-730</span>
+            </div>
+            <div className="pt-2 flex flex-col gap-2">
+              <a
+                href={orderSuccessUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOrderSuccessUrl(null)}
+                className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20ba5a] text-white font-extrabold uppercase tracking-widest py-4 rounded-xl text-xs transition-all shadow-md hover:shadow-lg hover:scale-[1.02] cursor-pointer"
+              >
+                Kirim Pesanan ke WhatsApp
+              </a>
+              <button
+                type="button"
+                onClick={() => setOrderSuccessUrl(null)}
+                className="w-full py-2.5 text-xs font-bold text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+              >
+                Tutup Jendela Ini
+              </button>
+            </div>
           </div>
         </div>
       )}

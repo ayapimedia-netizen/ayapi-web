@@ -48,8 +48,12 @@ export default function Kontak() {
     fetchData();
   }, []);
 
-  const waNumber = siteSettings.wa_number || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
-  const formattedWaNumber = siteSettings.wa_number_formatted || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER_FORMATTED || "+62 821-3444-730";
+  const waNumber = siteSettings.wa_number && !siteSettings.wa_number.includes("877")
+    ? siteSettings.wa_number
+    : "628213444730";
+  const formattedWaNumber = siteSettings.wa_number_formatted && !siteSettings.wa_number_formatted.includes("877")
+    ? siteSettings.wa_number_formatted
+    : "+62 821-3444-730";
   const csEmail = siteSettings.cs_email || "ayapihr@gmail.com";
   const hqAddress = siteSettings.headquarter_address || "Jl. Tukad Pakerisan No.96, Dauh Puri Klod, Kec. Denpasar Barat, Kota Denpasar, Bali";
 
@@ -202,7 +206,10 @@ export default function Kontak() {
       (formData.message.trim() ? `*Pesan Tambahan:*\n${formData.message}` : "");
 
     const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(templateMessage)}`;
-    window.open(waUrl, "_blank");
+    const opened = window.open(waUrl, "_blank");
+    if (!opened || opened.closed || typeof opened.closed === "undefined") {
+      window.location.href = waUrl;
+    }
   };
 
   const handleSubmitGeneral = (e: React.FormEvent) => {
@@ -230,7 +237,10 @@ export default function Kontak() {
       `*Pesan:*\n${formData.message}`;
 
     const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(templateMessage)}`;
-    window.open(waUrl, "_blank");
+    const opened = window.open(waUrl, "_blank");
+    if (!opened || opened.closed || typeof opened.closed === "undefined") {
+      window.location.href = waUrl;
+    }
   };
 
   return (

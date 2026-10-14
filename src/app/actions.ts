@@ -1546,7 +1546,7 @@ const fallbackLinks = (waNumber: string): LinkItem[] => [
 ];
 
 export async function getLinks(): Promise<LinkItem[]> {
-  const wa = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
+  const wa = "628213444730";
   if (!isSupabaseConfigured()) {
     return fallbackLinks(wa);
   }
@@ -1576,7 +1576,7 @@ export async function getAdminLinks(): Promise<LinkItem[]> {
   // Lazy purge expired items
   await purgeExpiredDeletedItems();
 
-  const wa = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
+  const wa = "628213444730";
   if (!isSupabaseConfigured()) {
     return fallbackLinks(wa);
   }
@@ -2313,6 +2313,12 @@ export async function getAllSiteSettings(): Promise<Record<string, string>> {
     data.forEach((item: { key: string; value: string }) => {
       result[item.key] = item.value;
     });
+    if (!result.wa_number || result.wa_number.includes("877")) {
+      result.wa_number = "628213444730";
+    }
+    if (!result.wa_number_formatted || result.wa_number_formatted.includes("877")) {
+      result.wa_number_formatted = "+62 821-3444-730";
+    }
     return result;
   } catch (err) {
     console.error("Error fetching site settings from Supabase:", err);

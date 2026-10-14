@@ -354,7 +354,7 @@ export default function Kemitraan() {
   };
 
   const triggerWhatsAppChat = () => {
-    const waNumber = siteSettings.wa_number || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "628213444730";
+    const waNumber = "628213444730";
     const messageTemplate =
       `Halo Tim Kemitraan Ayapi!\n` +
       `Saya tertarik dan ingin konsultasi kemitraan Ayapi (Paket: ${selectedPackage}).\n\n` +
@@ -363,7 +363,10 @@ export default function Kemitraan() {
       `Mohon info ketersediaan lokasi dan prospek kemitraan. Terima kasih!`;
 
     const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(messageTemplate)}`;
-    window.open(waUrl, "_blank");
+    const opened = window.open(waUrl, "_blank");
+    if (!opened || opened.closed || typeof opened.closed === "undefined") {
+      window.location.href = waUrl;
+    }
   };
 
   const handleDownloadSubmit = async (e: React.FormEvent) => {
