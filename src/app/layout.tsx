@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { getAllSiteSettings } from "@/app/actions";
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
@@ -43,11 +44,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const siteSettings = await getAllSiteSettings().catch((): Record<string, string> => ({}));
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "FoodEstablishment",
@@ -82,8 +85,8 @@ export default function RootLayout({
         />
         <Navbar />
         <main className="flex-grow w-full max-w-full overflow-x-hidden pt-24 sm:pt-28">{children}</main>
-        <Footer />
-        <WhatsAppButton />
+        <Footer siteSettings={siteSettings} />
+        <WhatsAppButton waNumber={siteSettings.wa_number} />
       </body>
     </html>
   );

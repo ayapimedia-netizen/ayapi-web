@@ -26,7 +26,7 @@ function getTime(): string {
 }
 
 export const logger = {
-  info: (scope: string, message: string, data?: any) => {
+  info: (scope: string, message: string, data?: unknown) => {
     console.log(
       `${colors.gray}[${getTime()}]${colors.reset} ${colors.cyan}${colors.bold}[INFO]${colors.reset} ${colors.blue}▸ [${scope}]${colors.reset} ${message}`
     );
@@ -35,7 +35,7 @@ export const logger = {
     }
   },
 
-  success: (scope: string, message: string, data?: any) => {
+  success: (scope: string, message: string, data?: unknown) => {
     console.log(
       `${colors.gray}[${getTime()}]${colors.reset} ${colors.green}${colors.bold}[SUCCESS]${colors.reset} ${colors.green}✔ [${scope}]${colors.reset} ${message}`
     );
@@ -44,7 +44,7 @@ export const logger = {
     }
   },
 
-  warn: (scope: string, message: string, data?: any) => {
+  warn: (scope: string, message: string, data?: unknown) => {
     console.warn(
       `${colors.gray}[${getTime()}]${colors.reset} ${colors.yellow}${colors.bold}[WARN]${colors.reset} ${colors.yellow}⚠ [${scope}]${colors.reset} ${message}`
     );
@@ -53,12 +53,12 @@ export const logger = {
     }
   },
 
-  error: (scope: string, message: string, errorObj?: any) => {
+  error: (scope: string, message: string, errorObj?: unknown) => {
     console.error(
       `${colors.gray}[${getTime()}]${colors.reset} ${colors.red}${colors.bold}[ERROR]${colors.reset} ${colors.red}✖ [${scope}]${colors.reset} ${colors.bold}${message}${colors.reset}`
     );
     if (errorObj) {
-      const errDetail = errorObj?.message || errorObj;
+      const errDetail = errorObj instanceof Error ? errorObj.message : errorObj;
       console.error(`${colors.red}  └─ Details:${colors.reset}`, errDetail);
     }
   },

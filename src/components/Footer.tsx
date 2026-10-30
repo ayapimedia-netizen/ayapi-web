@@ -2,24 +2,20 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { getAllSiteSettings } from "@/app/actions";
 
-export default function Footer() {
+interface FooterProps {
+  siteSettings?: Record<string, string>;
+}
+
+export default function Footer({ siteSettings = {} }: FooterProps) {
   const currentYear = new Date().getFullYear();
 
-  const [siteSettings, setSiteSettings] = useState<Record<string, string>>({});
   const [clickCount, setClickCount] = useState(0);
   const [clickTimer, setClickTimer] = useState<NodeJS.Timeout | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-
-  useEffect(() => {
-    getAllSiteSettings().then((res) => {
-      if (res) setSiteSettings(res);
-    });
-  }, []);
 
   const formattedWaNumber = siteSettings.wa_number_formatted && !siteSettings.wa_number_formatted.includes("877")
     ? siteSettings.wa_number_formatted

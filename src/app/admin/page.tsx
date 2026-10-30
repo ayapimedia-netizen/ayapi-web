@@ -25,7 +25,6 @@ import {
   updateBranch,
   deleteBranch,
   restoreBranch,
-  deleteBranches,
   getPartnershipLeads,
   updatePartnershipLeadStatus,
   deletePartnershipLeads,
@@ -188,7 +187,6 @@ export default function AdminDashboard() {
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
   const [promos, setPromos] = useState<PromoItem[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-  const [siteSettings, setSiteSettings] = useState<Record<string, string>>({});
   const [packages, setPackages] = useState<PartnershipPackage[]>([]);
   const [faqs, setFaqs] = useState<FAQItem[]>([]);
   const [trashItems, setTrashItems] = useState<TrashItem[]>([]);
@@ -200,7 +198,7 @@ export default function AdminDashboard() {
     type: "menu" | "gallery" | "branch" | "link" | "slide" | "promo" | "testimonial" | "package" | "faq";
     name: string;
     secondsRemaining: number;
-    restoreAction: (id: string) => Promise<any>;
+    restoreAction: (id: string) => Promise<unknown>;
     reloadCallback: () => void;
   };
   const [undoList, setUndoList] = useState<UndoItem[]>([]);
@@ -423,7 +421,7 @@ export default function AdminDashboard() {
     id: string,
     type: "menu" | "gallery" | "branch" | "link" | "slide" | "promo" | "testimonial" | "package" | "faq",
     name: string,
-    restoreAction: (id: string) => Promise<any>,
+    restoreAction: (id: string) => Promise<unknown>,
     reloadCallback: () => void
   ) => {
 
@@ -496,7 +494,6 @@ export default function AdminDashboard() {
           setHeroSlides(slidesData);
           setPromos(promosData);
           setTestimonials(testimonialsData);
-          setSiteSettings(settingsData);
           setPackages(packagesData);
           setFaqs(faqsData);
           setTrashItems(trashData);
@@ -511,8 +508,6 @@ export default function AdminDashboard() {
             if (settingsData.haki_cert_number) setSettingHaki(settingsData.haki_cert_number);
             if (settingsData.roi_cogs_percent) setSettingCogsPercent(settingsData.roi_cogs_percent);
           }
-          setPackages(packagesData);
-          setFaqs(faqsData);
         }
       } catch (err) {
         console.error("Gagal memuat data:", err);
@@ -1055,28 +1050,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Handle Bulk Delete Branches
-  const handleBulkBranchDelete = () => {
-    if (selectedBranchIds.length === 0) return;
-    
-    askConfirmation(
-      "Hapus Cabang Terpilih",
-      `Apakah Anda yakin ingin menghapus ${selectedBranchIds.length} cabang yang terpilih? Tindakan ini tidak dapat dibatalkan.`,
-      async () => {
-        try {
-          await deleteBranches(selectedBranchIds);
-          setBranches((prev) => prev.filter((b) => !selectedBranchIds.includes(b.id!)));
-          setSelectedBranchIds([]);
-          showMsg("success", "Cabang terpilih berhasil dihapus massal.");
-        } catch (err) {
-          console.error(err);
-          const errMsg = err instanceof Error ? err.message : "Gagal menghapus cabang terpilih secara massal.";
-          showMsg("error", errMsg);
-        }
-      }
-    );
-  };
-
   // Handle individual lead selection toggle
   const handleSelectLead = (id: string) => {
     setSelectedLeadIds((prev) =>
@@ -1124,69 +1097,6 @@ export default function AdminDashboard() {
         }
       }
     );
-  };
-
-  // Handle bulk leads deletion
-  const handleBulkLeadsDelete = () => {
-    if (selectedLeadIds.length === 0) return;
-
-    askConfirmation(
-      "Hapus Prospek Terpilih",
-      `Apakah Anda yakin ingin menghapus ${selectedLeadIds.length} prospek yang terpilih? Tindakan ini tidak dapat dibatalkan.`,
-      async () => {
-        try {
-          await deletePartnershipLeads(selectedLeadIds);
-          setPartnershipLeads((prev) => prev.filter((l) => !selectedLeadIds.includes(l.id!)));
-          setSelectedLeadIds([]);
-          showMsg("success", "Prospek terpilih berhasil dihapus massal.");
-        } catch (err) {
-          console.error(err);
-          const errMsg = err instanceof Error ? err.message : "Gagal menghapus prospek terpilih secara massal.";
-          showMsg("error", errMsg);
-        }
-      }
-    );
-  };
-
-  // Compile partnership leads data into a CSV blob and download it
-  const handleExportLeadsCSV = () => {
-    if (partnershipLeads.length === 0) return;
-
-    // Header for CSV
-    const headers = ["Nama Calon Mitra", "No. WhatsApp", "Tanggal Terdaftar", "Status Follow-up"];
-
-    // Convert leads to rows
-    const rows = partnershipLeads.map((lead) => {
-      const formattedDate = lead.created_at
-        ? new Date(lead.created_at).toLocaleString("id-ID", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })
-        : "-";
-
-      // Escape commas, double quotes and newlines for CSV safety
-      const name = `"${(lead.name || "").replace(/"/g, '""')}"`;
-      const phone = `"${(lead.phone || "").replace(/"/g, '""')}"`;
-      const date = `"${formattedDate.replace(/"/g, '""')}"`;
-      const status = `"${(lead.status || "").replace(/"/g, '""')}"`;
-
-      return [name, phone, date, status].join(",");
-    });
-
-    // Combine header and rows
-    const csvContent = [headers.join(","), ...rows].join("\n");
-
-    // Add BOM character to ensure proper UTF-8 encoding in Excel
-    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Leads_Kemitraan_Ayapi_${new Date().toISOString().split("T")[0]}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showMsg("success", "Data prospek kemitraan berhasil diekspor ke CSV.");
   };
 
   // Open Link Modal for Add
@@ -1681,9 +1591,9 @@ export default function AdminDashboard() {
 
       setIsPromoModalOpen(false);
       await reloadPromos();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showMsg("error", err.message || "Gagal menyimpan promo.");
+      showMsg("error", err instanceof Error ? err.message : "Gagal menyimpan promo.");
     } finally {
       setIsSubmitting(false);
       setIsUploading(false);
@@ -1698,9 +1608,9 @@ export default function AdminDashboard() {
       const trash = await getTrashItems();
       setTrashItems(trash);
       showMsg("success", `Promo "${title}" dipindahkan ke keranjang sampah.`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showMsg("error", err.message || "Gagal menghapus promo.");
+      showMsg("error", err instanceof Error ? err.message : "Gagal menghapus promo.");
     }
   };
 
@@ -1710,9 +1620,9 @@ export default function AdminDashboard() {
       await updatePromo(p.id, { is_active: nextActive });
       await reloadPromos();
       showMsg("success", `Status promo "${p.title}" diubah menjadi ${nextActive ? "Aktif" : "Nonaktif"}.`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showMsg("error", err.message || "Gagal mengubah status promo.");
+      showMsg("error", err instanceof Error ? err.message : "Gagal mengubah status promo.");
     }
   };
 
@@ -1724,9 +1634,9 @@ export default function AdminDashboard() {
     try {
       await swapPromoOrder(current.id, current.sort_order ?? index + 1, target.id, target.sort_order ?? targetIndex + 1);
       await reloadPromos();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showMsg("error", err.message || "Gagal mengubah urutan promo.");
+      showMsg("error", err instanceof Error ? err.message : "Gagal mengubah urutan promo.");
     }
   };
 
@@ -1826,17 +1736,15 @@ export default function AdminDashboard() {
     const t2 = testimonials[index2];
     if (!t1 || !t2 || !t1.id || !t2.id) return;
     
-    // Optimistic UI update
+    const order1 = t1.sort_order;
+    const order2 = t2.sort_order;
     const nextList = [...testimonials];
-    const tempOrder = t1.sort_order;
-    t1.sort_order = t2.sort_order;
-    t2.sort_order = tempOrder;
-    nextList[index1] = t2;
-    nextList[index2] = t1;
+    nextList[index1] = { ...t2, sort_order: order1 };
+    nextList[index2] = { ...t1, sort_order: order2 };
     setTestimonials(nextList);
 
     try {
-      await swapTestimonialOrder(t1.id, t1.sort_order, t2.id, t2.sort_order);
+      await swapTestimonialOrder(t1.id, order2, t2.id, order1);
     } catch (err) {
       console.error(err);
       showMsg("error", "Gagal mengubah urutan testimoni.");
@@ -1875,11 +1783,10 @@ export default function AdminDashboard() {
         roi_cogs_percent: settingCogsPercent.trim(),
       };
       await updateAllSiteSettings(payload);
-      setSiteSettings(payload);
       showMsg("success", "Pengaturan website berhasil disimpan & diperbarui!");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showMsg("error", err?.message || "Gagal menyimpan pengaturan website.");
+      showMsg("error", err instanceof Error ? err.message : "Gagal menyimpan pengaturan website.");
     } finally {
       setIsSavingSettings(false);
     }
@@ -1975,9 +1882,9 @@ export default function AdminDashboard() {
         showMsg("success", "Paket kemitraan baru berhasil ditambahkan!");
       }
       setIsPackageModalOpen(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showMsg("error", err?.message || "Gagal menyimpan paket kemitraan.");
+      showMsg("error", err instanceof Error ? err.message : "Gagal menyimpan paket kemitraan.");
     } finally {
       setIsSubmitting(false);
       setIsUploading(false);
@@ -1993,9 +1900,9 @@ export default function AdminDashboard() {
         setPackages(actual);
       });
       showMsg("success", `Paket "${name}" dipindahkan ke keranjang sampah.`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showMsg("error", err?.message || "Gagal menghapus paket kemitraan.");
+      showMsg("error", err instanceof Error ? err.message : "Gagal menghapus paket kemitraan.");
     }
   };
 
@@ -2044,9 +1951,9 @@ export default function AdminDashboard() {
         showMsg("success", "FAQ baru berhasil ditambahkan!");
       }
       setIsFaqModalOpen(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      showMsg("error", err?.message || "Gagal menyimpan FAQ.");
+      showMsg("error", err instanceof Error ? err.message : "Gagal menyimpan FAQ.");
     } finally {
       setIsSubmitting(false);
     }
@@ -2073,16 +1980,15 @@ export default function AdminDashboard() {
     const f2 = faqs[index2];
     if (!f1 || !f2 || !f1.id || !f2.id) return;
 
+    const order1 = f1.sort_order || index1 + 1;
+    const order2 = f2.sort_order || index2 + 1;
     const nextList = [...faqs];
-    const tempOrder = f1.sort_order || index1 + 1;
-    f1.sort_order = f2.sort_order || index2 + 1;
-    f2.sort_order = tempOrder;
-    nextList[index1] = f2;
-    nextList[index2] = f1;
+    nextList[index1] = { ...f2, sort_order: order1 };
+    nextList[index2] = { ...f1, sort_order: order2 };
     setFaqs(nextList);
 
     try {
-      await swapFaqOrder(f1.id, f1.sort_order, f2.id, f2.sort_order);
+      await swapFaqOrder(f1.id, order2, f2.id, order1);
     } catch (err) {
       console.error(err);
       showMsg("error", "Gagal mengubah urutan FAQ.");
@@ -3291,7 +3197,6 @@ export default function AdminDashboard() {
                               <td className="py-4 px-6 text-xs font-bold text-gray-400">{index + 1}</td>
                               <td className="py-4 px-6">
                                 <div className="w-28 h-16 rounded-xl overflow-hidden bg-gray-100 relative">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img src={slide.image} alt={slide.alt} className="w-full h-full object-cover" />
                                 </div>
                               </td>
@@ -3429,7 +3334,6 @@ export default function AdminDashboard() {
                               <td className="py-4 px-6 text-xs font-bold text-gray-400">{index + 1}</td>
                               <td className="py-4 px-6">
                                 <div className="w-24 h-16 rounded-xl overflow-hidden bg-gray-100 relative border border-gray-200/80 shadow-xs">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img src={promo.image} alt={promo.title} className="w-full h-full object-cover" />
                                 </div>
                               </td>
@@ -3564,7 +3468,7 @@ export default function AdminDashboard() {
                       {testimonials.length === 0 ? (
                         <tr>
                           <td colSpan={8} className="px-6 py-10 text-center text-gray-400 font-medium text-xs">
-                            Belum ada testimoni. Klik tombol "Tambah Testimoni" untuk membuat baru.
+                            Belum ada testimoni. Klik tombol &quot;Tambah Testimoni&quot; untuk membuat baru.
                           </td>
                         </tr>
                       ) : (
@@ -4108,7 +4012,6 @@ export default function AdminDashboard() {
                 <div className={`border-2 border-dashed rounded-2xl p-4 text-center transition-colors ${formErrors.image ? "border-red-400 bg-red-50/30" : "border-gray-200 hover:border-brand-red/30"}`}>
                   {imagePreview ? (
                     <div className="relative w-full h-40 rounded-xl overflow-hidden bg-gray-100 mb-3">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                       <button
                         type="button"
@@ -4414,7 +4317,6 @@ export default function AdminDashboard() {
                   }`}>
                     {promoImagePreview ? (
                       <div className="relative w-full h-36 rounded-xl overflow-hidden bg-gray-100 mb-3">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={promoImagePreview} alt="Preview Kartu" className="w-full h-full object-cover" />
                         <button
                           type="button"
@@ -4479,7 +4381,6 @@ export default function AdminDashboard() {
                       <label className="block text-[10px] font-bold uppercase text-gray-500">Gambar Header Banner Modal Khusus</label>
                       {bannerImagePreview && (
                         <div className="relative w-full h-28 rounded-xl overflow-hidden bg-gray-100 mb-2">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={bannerImagePreview} alt="Preview Banner" className="w-full h-full object-cover" />
                         </div>
                       )}

@@ -58,16 +58,8 @@ function sha256(str: string): string {
 
 /**
  * Calculates a cryptographically secure session token based on admin credentials
- * and a secret key. This prevents cookie spoofing / authentication bypass.
+ * and a secret key with a timestamp. This prevents cookie spoofing / authentication bypass.
  */
-export function getSecureSessionToken(): string {
-  const adminUser = process.env.ADMIN_USERNAME || "admin";
-  const adminPass = process.env.ADMIN_PASSWORD || "m1n66A61lAA";
-  const secret = process.env.SESSION_SECRET || "ayapi-fallback-secure-salt-key-999";
-  
-  return sha256(`${adminUser}:${adminPass}:${secret}`);
-}
-
 export function getSecureSessionTokenWithTimestamp(timestamp: number): string {
   const adminUser = process.env.ADMIN_USERNAME || "admin";
   const adminPass = process.env.ADMIN_PASSWORD || "m1n66A61lAA";

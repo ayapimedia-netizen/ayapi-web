@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { supabase, supabaseAdmin } from "@/lib/supabase";
 import fs from "fs/promises";
 import path from "path";
-import { getSecureSessionToken, getSecureSessionTokenWithTimestamp } from "@/lib/auth-helper";
+import { getSecureSessionTokenWithTimestamp, isSessionValid } from "@/lib/auth-helper";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 
@@ -513,23 +513,7 @@ export async function logoutAdmin() {
 export async function checkAdminSession() {
   const cookieStore = await cookies();
   const session = cookieStore.get("admin_session");
-  if (!session?.value) return false;
-
-  const parts = session.value.split(":");
-  if (parts.length !== 2) return false;
-
-  const [hash, timestampStr] = parts;
-  const timestamp = parseInt(timestampStr, 10);
-  if (isNaN(timestamp)) return false;
-
-  // Verify expiration (24h)
-  const now = Date.now();
-  if (now - timestamp > 24 * 60 * 60 * 1000) {
-    return false;
-  }
-
-  const expectedHash = getSecureSessionTokenWithTimestamp(timestamp);
-  return hash === expectedHash;
+  return isSessionValid(session?.value);
 }
 
 // Lazy garbage collection for soft deleted items
@@ -576,14 +560,25 @@ export async function purgeExpiredDeletedItems() {
       await supabaseAdmin.from("hero_slides").delete().in("id", slides.map(i => i.id));
     }
 
-    // 4. Branches
-    await supabaseAdmin.from("branches").delete().lt("deleted_at", twoMinutesAgo);
+    // 4. Partnership packages
+    const { data: pkgs } = await supabaseAdmin
+      .from("partnership_packages")
+      .select("id, image")
+      .lt("deleted_at", twoMinutesAgo);
+    if (pkgs && pkgs.length > 0) {
+      for (const p of pkgs) {
+        if (p.image) await deleteStorageFile(p.image);
+      }
+      await supabaseAdmin.from("partnership_packages").delete().in("id", pkgs.map(i => i.id));
+    }
 
-    // 5. Links
-    await supabaseAdmin.from("links").delete().lt("deleted_at", twoMinutesAgo);
-
-    // 6. Testimonials
-    await supabaseAdmin.from("testimonials").delete().lt("deleted_at", twoMinutesAgo);
+    // 5. Branches, Links, Testimonials, FAQs
+    await Promise.all([
+      supabaseAdmin.from("branches").delete().lt("deleted_at", twoMinutesAgo),
+      supabaseAdmin.from("links").delete().lt("deleted_at", twoMinutesAgo),
+      supabaseAdmin.from("testimonials").delete().lt("deleted_at", twoMinutesAgo),
+      supabaseAdmin.from("faqs").delete().lt("deleted_at", twoMinutesAgo),
+    ]);
   } catch (err) {
     console.error("Gagal membersihkan item kedaluwarsa:", err);
   }
@@ -1103,31 +1098,6 @@ export async function restoreBranch(id: string) {
   return data;
 }
 
-export async function deleteBranches(ids: string[]) {
-  const isAdmin = await checkAdminSession();
-  if (!isAdmin) throw new Error("Unauthorized");
-
-  if (!isSupabaseConfigured()) {
-    throw new Error("Supabase is not configured yet.");
-  }
-
-  const { error } = await supabaseAdmin
-    .from("branches")
-    .update({ deleted_at: new Date().toISOString() })
-    .in("id", ids);
-
-  if (error) {
-    console.error("Error soft deleting branches:", error);
-    throw error;
-  }
-
-  revalidatePath("/menu");
-  revalidatePath("/kontak");
-  revalidatePath("/links");
-  return { success: true };
-}
-
-
 /* =========================================================================
    6. PARTNERSHIP LEADS MANAGEMENT ACTIONS
    ========================================================================= */
@@ -1361,7 +1331,7 @@ export async function createOrder(order: Omit<Order, "id" | "status" | "created_
     // Mock response when DB not connected
     return {
       ...order,
-      id: "mock-" + Math.random().toString(36).substr(2, 9),
+      id: "mock-" + Math.random().toString(36).slice(2, 11),
       status: "Confirmed",
       created_at: new Date().toISOString(),
     };
@@ -1389,74 +1359,6 @@ export async function createOrder(order: Omit<Order, "id" | "status" | "created_
 
   revalidatePath("/admin");
   return data;
-}
-
-export async function getOrders(): Promise<Order[]> {
-  const isAdmin = await checkAdminSession();
-  if (!isAdmin) throw new Error("Unauthorized");
-
-  if (!isSupabaseConfigured()) {
-    return [];
-  }
-
-  try {
-    const { data, error } = await supabaseAdmin
-      .from("orders")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  } catch (err) {
-    console.error("Error fetching orders from Supabase:", err);
-    return [];
-  }
-}
-
-export async function updateOrderStatus(id: string, status: string): Promise<Order> {
-  const isAdmin = await checkAdminSession();
-  if (!isAdmin) throw new Error("Unauthorized");
-
-  if (!isSupabaseConfigured()) {
-    throw new Error("Supabase is not configured yet.");
-  }
-
-  const { data, error } = await supabaseAdmin
-    .from("orders")
-    .update({ status })
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error updating order status:", error);
-    throw error;
-  }
-
-  revalidatePath("/admin");
-  return data;
-}
-
-export async function deleteOrders(ids: string[]): Promise<{ success: boolean }> {
-  const isAdmin = await checkAdminSession();
-  if (!isAdmin) throw new Error("Unauthorized");
-
-  if (!isSupabaseConfigured()) {
-    throw new Error("Supabase is not configured yet.");
-  }
-
-  const { error } = await supabaseAdmin
-    .from("orders")
-    .delete()
-    .in("id", ids);
-
-  if (error) {
-    console.error("Error deleting orders:", error);
-    throw error;
-  }
-
-  revalidatePath("/admin");
-  return { success: true };
 }
 
 /* =========================================================================
@@ -1862,48 +1764,6 @@ export type HeroSlide = {
   is_active: boolean;
   created_at?: string;
 };
-
-const fallbackHeroSlides: HeroSlide[] = [
-  {
-    image: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=800&q=80",
-    alt: "Ayam Krispi Bakar Juicy",
-    badge: "🔥 KULINER FRANCHISE TERBAIK",
-    title: "Aroma Smoky Juara,\nBisnis Kuliner Luar Biasa",
-    sub: "Sensasi Ayam Krispi Bakar (Krisbar) premium yang renyah di luar, juicy di dalam. Menarik ribuan pelanggan harian, menghadirkan peluang investasi franchise dengan keuntungan cepat dan berkelanjutan.",
-    button_text: "🍔 Lihat Menu Terlezat",
-    button_link: "/menu",
-    button2_text: "💼 Peluang Kemitraan",
-    button2_link: "/kemitraan",
-    sort_order: 0,
-    is_active: true,
-  },
-  {
-    image: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=800&q=80",
-    alt: "Ayam Geprek Krisbar Pedas",
-    badge: "🔥 MENU TERLARIS NYAMAN DI KANTONG",
-    title: "Krispi Bakar Geprek,\nPedas Nampol Nikmat!",
-    sub: "Kombinasi ayam krispi bakar saus pilihan digeprek dengan sambal korek bawang asli yang dibuat segar setiap hari. Lezatnya bikin ketagihan!",
-    button_text: "🍔 Lihat Menu Terlezat",
-    button_link: "/menu",
-    button2_text: "💼 Peluang Kemitraan",
-    button2_link: "/kemitraan",
-    sort_order: 1,
-    is_active: true,
-  },
-  {
-    image: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=800&q=80",
-    alt: "Outlet Kemitraan Premium Ayapi",
-    badge: "🔥 PELUANG EMAS FRANCHISE",
-    title: "Gabung Kemitraan,\nModal Ringan Cepat Balik",
-    sub: "Sistem bisnis auto-pilot yang transparan, bumbu rahasia tersuplai aman, pendampingan penuh dari tim berpengalaman. Raih omset puluhan juta per bulan!",
-    button_text: "💼 Gabung Mitra Sekarang",
-    button_link: "/kemitraan",
-    button2_text: "📞 Hubungi Kami",
-    button2_link: "/kontak",
-    sort_order: 2,
-    is_active: true,
-  },
-];
 
 // Public: fetch active slides sorted by sort_order
 export async function getHeroSlides(): Promise<HeroSlide[]> {
@@ -2481,6 +2341,7 @@ export async function getAdminPartnershipPackages(): Promise<PartnershipPackage[
     const { data, error } = await supabaseAdmin
       .from("partnership_packages")
       .select("*")
+      .is("deleted_at", null)
       .order("sort_order", { ascending: true });
 
     if (error || !data || data.length === 0) return fallbackPackages;
@@ -2544,8 +2405,8 @@ export async function updatePartnershipPackage(id: string, pkg: Partial<Partners
     }
   }
 
-  const payload = { ...pkg };
-  delete (payload as any).id;
+  const { id: _unusedId, ...payload } = pkg;
+  void _unusedId;
   if (payload.badge === undefined) delete payload.badge;
 
   const { data, error } = await supabaseAdmin
@@ -2690,6 +2551,7 @@ export async function getAdminFaqs(): Promise<FAQItem[]> {
     const { data, error } = await supabaseAdmin
       .from("faqs")
       .select("*")
+      .is("deleted_at", null)
       .order("sort_order", { ascending: true });
 
     if (error || !data || data.length === 0) return fallbackFaqs;
@@ -2987,13 +2849,17 @@ export async function getTrashItems(): Promise<TrashItem[]> {
       { data: links },
       { data: slides },
       { data: testimonials },
+      { data: packages },
+      { data: faqs },
     ] = await Promise.all([
       supabaseAdmin.from("menu_items").select("id, name, category, image, deleted_at").not("deleted_at", "is", null),
       supabaseAdmin.from("gallery_items").select("id, title, category, image, deleted_at").not("deleted_at", "is", null),
-      supabaseAdmin.from("branches").select("id, name, city, deleted_at").not("deleted_at", "is", null),
+      supabaseAdmin.from("branches").select("id, name, deleted_at").not("deleted_at", "is", null),
       supabaseAdmin.from("links").select("id, title, url, deleted_at").not("deleted_at", "is", null),
       supabaseAdmin.from("hero_slides").select("id, title, alt, image, deleted_at").not("deleted_at", "is", null),
       supabaseAdmin.from("testimonials").select("id, name, role, deleted_at").not("deleted_at", "is", null),
+      supabaseAdmin.from("partnership_packages").select("id, name, price_text, image, deleted_at").not("deleted_at", "is", null),
+      supabaseAdmin.from("faqs").select("id, question, deleted_at").not("deleted_at", "is", null),
     ]);
 
     if (menus) {
@@ -3003,7 +2869,7 @@ export async function getTrashItems(): Promise<TrashItem[]> {
       gallery.forEach((g) => trash.push({ id: g.id, type: "gallery", title: g.title, subtitle: `Galeri (${g.category})`, image: g.image, deleted_at: g.deleted_at }));
     }
     if (branches) {
-      branches.forEach((b) => trash.push({ id: b.id, type: "branch", title: b.name, subtitle: `Cabang ${b.city}`, deleted_at: b.deleted_at }));
+      branches.forEach((b) => trash.push({ id: b.id, type: "branch", title: b.name, subtitle: "Cabang Outlet", deleted_at: b.deleted_at }));
     }
     if (links) {
       links.forEach((l) => trash.push({ id: l.id, type: "link", title: l.title, subtitle: l.url, deleted_at: l.deleted_at }));
@@ -3013,6 +2879,12 @@ export async function getTrashItems(): Promise<TrashItem[]> {
     }
     if (testimonials) {
       testimonials.forEach((t) => trash.push({ id: t.id, type: "testimonial", title: t.name, subtitle: `Testimoni (${t.role})`, deleted_at: t.deleted_at }));
+    }
+    if (packages) {
+      packages.forEach((pkg) => trash.push({ id: pkg.id, type: "package", title: pkg.name, subtitle: `Paket Kemitraan (${pkg.price_text})`, image: pkg.image, deleted_at: pkg.deleted_at }));
+    }
+    if (faqs) {
+      faqs.forEach((f) => trash.push({ id: f.id, type: "faq", title: f.question, subtitle: "FAQ Kemitraan", deleted_at: f.deleted_at }));
     }
 
     const allPromos = await fetchAllPromosFromStorage();
@@ -3067,7 +2939,7 @@ export async function permanentDeleteTrashItem(id: string, type: TrashItem["type
   const tableName = tableMap[type as Exclude<TrashItem["type"], "promo">];
   if (!tableName) return { success: false };
 
-  if (type === "menu" || type === "gallery" || type === "slideshow") {
+  if (type === "menu" || type === "gallery" || type === "slideshow" || type === "package") {
     const { data: item } = await supabaseAdmin.from(tableName).select("image").eq("id", id).single();
     if (item?.image) await deleteStorageFile(item.image);
   }
@@ -3120,9 +2992,29 @@ export async function emptyAllTrashItems() {
 
   try {
     const trashItems = await getTrashItems();
-    for (const item of trashItems) {
-      await permanentDeleteTrashItem(item.id, item.type);
+    await Promise.all(
+      trashItems
+        .filter((item) => item.image)
+        .map((item) => deleteStorageFile(item.image!))
+    );
+
+    const allPromos = await fetchAllPromosFromStorage();
+    const activePromos = allPromos.filter((p) => !p.deleted_at);
+    if (activePromos.length !== allPromos.length) {
+      await saveAllPromosToStorage(activePromos);
     }
+
+    await Promise.all([
+      supabaseAdmin.from("menu_items").delete().not("deleted_at", "is", null),
+      supabaseAdmin.from("gallery_items").delete().not("deleted_at", "is", null),
+      supabaseAdmin.from("branches").delete().not("deleted_at", "is", null),
+      supabaseAdmin.from("links").delete().not("deleted_at", "is", null),
+      supabaseAdmin.from("hero_slides").delete().not("deleted_at", "is", null),
+      supabaseAdmin.from("testimonials").delete().not("deleted_at", "is", null),
+      supabaseAdmin.from("partnership_packages").delete().not("deleted_at", "is", null),
+      supabaseAdmin.from("faqs").delete().not("deleted_at", "is", null),
+    ]);
+
     revalidatePath("/admin");
     return { success: true };
   } catch (err) {

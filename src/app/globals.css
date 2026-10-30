@@ -61,61 +61,6 @@ html {
 }
 
 /* Custom premium animations */
-@keyframes float {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes pulse-subtle {
-
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 0.85;
-    transform: scale(1.03);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.animate-float {
-  animation: float 4s ease-in-out infinite;
-}
-
-.animate-float-delayed {
-  animation: float 4s ease-in-out infinite;
-  animation-delay: 2s;
-}
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 3s ease-in-out infinite;
-}
-
-.animate-shimmer {
-  background: linear-gradient(90deg, rgba(245, 184, 0, 0) 0%, rgba(255, 255, 255, 0.4) 50%, rgba(245, 184, 0, 0) 100%);
-  background-size: 200% 100%;
-  animation: shimmer 3s infinite;
-}
-
 @keyframes fade-in-up {
   from {
     opacity: 0;
@@ -130,31 +75,6 @@ html {
 
 .animate-fade-in-up {
   animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Text Gradients */
-.text-gradient-flame {
-  background: linear-gradient(135deg, #FF4D4D 0%, #F5B800 50%, #FF8C00 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.text-gradient-gold {
-  background: linear-gradient(135deg, #FFE082 0%, #FFB300 50%, #FF6F00 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.text-gradient-maroon {
-  background: linear-gradient(135deg, #C62828 0%, #8C1C1C 50%, #5E1111 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.text-gradient-dark {
-  background: linear-gradient(135deg, #1A1A1A 0%, #4A4A4A 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 /* Geometric background grid patterns */
@@ -172,10 +92,6 @@ html {
     linear-gradient(to bottom, rgba(198, 40, 40, 0.02) 1px, transparent 1px);
 }
 
-.bg-radial-ember {
-  background: radial-gradient(circle at 50% 0%, rgba(140, 28, 28, 0.2) 0%, rgba(15, 15, 18, 0) 70%);
-}
-
 /* Custom soft & glowing shadows */
 .shadow-premium {
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
@@ -183,14 +99,6 @@ html {
 
 .shadow-premium-hover {
   box-shadow: 0 20px 40px -15px rgba(198, 40, 40, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
-}
-
-.shadow-glow-red {
-  box-shadow: 0 0 25px rgba(198, 40, 40, 0.35);
-}
-
-.shadow-glow-maroon {
-  box-shadow: 0 0 25px rgba(140, 28, 28, 0.4);
 }
 
 .shadow-glow-amber {
@@ -212,20 +120,6 @@ html {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.6);
-}
-
-.bg-glass-dark {
-  background-color: rgba(18, 18, 22, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.bg-glass-ember {
-  background: linear-gradient(135deg, rgba(198, 40, 40, 0.08) 0%, rgba(245, 184, 0, 0.04) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(198, 40, 40, 0.2);
 }
 
 /* Bento card specific styling */

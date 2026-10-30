@@ -1,15 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
 import {
   addPartnershipLead,
-  getPartnershipPackages,
-  getFaqs,
-  getAllSiteSettings,
-  getTestimonials,
   PartnershipPackage,
   FAQItem,
   Testimonial,
@@ -267,27 +263,11 @@ export default function KemitraanClient({
   const [selectedPackage, setSelectedPackage] = useState<string>("express-1");
   const [packageCategoryFilter, setPackageCategoryFilter] = useState<"all" | "express" | "resto">("all");
 
-  // Dynamic DB States
-  const [pkgList, setPkgList] = useState<PartnershipPackage[]>(initialPackages);
-  const [faqList, setFaqList] = useState<FAQItem[]>(initialFaqs);
-  const [testimonialsList, setTestimonialsList] = useState<Testimonial[]>(initialTestimonials);
-  const [siteSettings, setSiteSettings] = useState<Record<string, string>>(initialSiteSettings);
-
-  useEffect(() => {
-    if (initialPackages && initialPackages.length > 0) setPkgList(initialPackages);
-  }, [initialPackages]);
-
-  useEffect(() => {
-    if (initialFaqs && initialFaqs.length > 0) setFaqList(initialFaqs);
-  }, [initialFaqs]);
-
-  useEffect(() => {
-    if (initialTestimonials && initialTestimonials.length > 0) setTestimonialsList(initialTestimonials);
-  }, [initialTestimonials]);
-
-  useEffect(() => {
-    if (initialSiteSettings && Object.keys(initialSiteSettings).length > 0) setSiteSettings(initialSiteSettings);
-  }, [initialSiteSettings]);
+  // Dynamic DB Props
+  const pkgList = initialPackages;
+  const faqList = initialFaqs;
+  const testimonialsList = initialTestimonials;
+  const siteSettings = initialSiteSettings;
 
   // Calculator States
   const [dailySales, setDailySales] = useState(100);

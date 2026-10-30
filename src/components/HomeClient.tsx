@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import QRCode from "qrcode";
-import { Flame, Sparkles, Utensils, Star, ArrowRight, CheckCircle2, Building2, Tag, Gift, X, ExternalLink } from "lucide-react";
+import { Flame, Sparkles, Utensils, Star, ArrowRight, CheckCircle2, Building2, X, ExternalLink } from "lucide-react";
 import { MenuItem, Branch, HeroSlide } from "@/app/actions";
 import { PromoItem } from "@/lib/promo-defaults";
 
@@ -22,34 +22,17 @@ export default function HomeClient({
   initialBranches,
 }: HomeClientProps) {
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
-  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(initialHeroSlides);
+  const heroSlides = initialHeroSlides;
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   // Promo Modal State
   const [selectedPromo, setSelectedPromo] = useState<PromoItem | null>(null);
-  const [promoList, setPromoList] = useState<PromoItem[]>(initialPromos);
+  const promoList = initialPromos;
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
 
-  // Data States
-  const [featuredItems, setFeaturedItems] = useState<MenuItem[]>(initialFeaturedItems);
-  const [branches, setBranches] = useState<Branch[]>(initialBranches);
-
-  // Keep state synced if props change
-  useEffect(() => {
-    setHeroSlides(initialHeroSlides);
-  }, [initialHeroSlides]);
-
-  useEffect(() => {
-    setPromoList(initialPromos);
-  }, [initialPromos]);
-
-  useEffect(() => {
-    setFeaturedItems(initialFeaturedItems);
-  }, [initialFeaturedItems]);
-
-  useEffect(() => {
-    setBranches(initialBranches);
-  }, [initialBranches]);
+  // Data from Server Props
+  const featuredItems = initialFeaturedItems;
+  const branches = initialBranches;
 
   useEffect(() => {
     if (selectedPromo?.details?.showQrCode) {
@@ -115,7 +98,7 @@ export default function HomeClient({
                 fill
                 priority={idx === 0}
                 loading={idx === 0 ? "eager" : "lazy"}
-                unoptimized
+                unoptimized={slide.image?.startsWith("http")}
                 className={`object-cover transition-transform duration-[8000ms] ease-out ${
                   idx === currentHeroSlide ? "scale-105" : "scale-100"
                 }`}

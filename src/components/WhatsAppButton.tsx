@@ -2,9 +2,13 @@
 
 import { usePathname } from "next/navigation";
 
-export default function WhatsAppButton() {
+interface WhatsAppButtonProps {
+  waNumber?: string;
+}
+
+export default function WhatsAppButton({ waNumber: propWaNumber }: WhatsAppButtonProps) {
   const pathname = usePathname();
-  const waNumber = "628213444730";
+  const waNumber = propWaNumber && !propWaNumber.includes("877") ? propWaNumber : "628213444730";
 
   const defaultMessage = encodeURIComponent("Halo Ayapi Krispi Bakar, saya ingin bertanya tentang menu / kemitraan.");
   const waUrl = `https://wa.me/${waNumber}?text=${defaultMessage}`;
