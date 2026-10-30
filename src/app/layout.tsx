@@ -11,7 +11,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://ayapikrispibar.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://ayapiku.com"),
   title: "Ayapi Krispi Bakar | Ayam Krispi Bakar Kualitas Premium",
   description:
     "Ayapi Krispi Bakar menyajikan ayam krispi bakar kualitas premium yang renyah di luar dan juicy di dalam. Nikmati ayam bakar krispi lezat atau bergabung sebagai mitra franchise kami.",
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     title: "Ayapi Krispi Bakar | Ayam Krispi Bakar Kualitas Premium",
     description:
       "Ayapi Krispi Bakar menyajikan ayam krispi bakar kualitas premium yang renyah di luar dan juicy di dalam. Nikmati ayam bakar krispi lezat atau bergabung sebagai mitra franchise kami.",
-    url: "https://ayapikrispibar.com",
+    url: "https://ayapiku.com",
     siteName: "Ayapi Krispi Bakar",
     images: [
       {
@@ -52,9 +52,9 @@ export default function RootLayout({
     "@context": "https://schema.org",
     "@type": "FoodEstablishment",
     "name": "Ayapi Krispi Bakar Indonesia",
-    "image": "https://ayapi-link.vercel.app/logo.png",
+    "image": "https://ayapiku.com/logo.png",
     "description": "Ayapi Krispi Bakar menyajikan ayam krispi bakar kualitas premium yang renyah di luar dan juicy di dalam. Nikmati ayam bakar krispi lezat atau bergabung sebagai mitra franchise kami.",
-    "url": "https://ayapi-link.vercel.app",
+    "url": "https://ayapiku.com",
     "telephone": "+628213444730",
     "priceRange": "Rp 20.000 - Rp 50.000",
     "servesCuisine": "Indonesian",

@@ -7,7 +7,8 @@ import Link from "next/link";
 import Image from "next/image";
 import QRCode from "qrcode";
 import { Flame, Sparkles, Utensils, Star, ArrowRight, CheckCircle2, Building2, Tag, Gift, X, ExternalLink } from "lucide-react";
-import { getMenuItems, getBranches, getHeroSlides, MenuItem, Branch, HeroSlide } from "@/app/actions";
+import { getMenuItems, getBranches, getHeroSlides, getPromos, MenuItem, Branch, HeroSlide } from "@/app/actions";
+import { PromoItem, defaultPromoItems } from "@/lib/promo-defaults";
 
 // Fallback slides when database is empty (exact 5 slides requested)
 const defaultHeroSlides: HeroSlide[] = [
@@ -78,157 +79,6 @@ const defaultHeroSlides: HeroSlide[] = [
   },
 ];
 
-type PromoItem = {
-  id: string;
-  badge: string;
-  title: string;
-  desc: string;
-  image: string;
-  bannerImage: string;
-  ctaText: string;
-  actionType: "modal" | "link";
-  linkUrl?: string;
-  details: {
-    highlight: string;
-    description: string;
-    points: string[];
-    actionButtonText?: string;
-    actionButtonUrl?: string;
-    showQrCode?: boolean;
-  };
-};
-
-const promoItems: PromoItem[] = [
-  {
-    id: "free-delivery",
-    badge: "🛵 PROMO DELIVERY",
-    title: "FREE DELIVERY",
-    desc: "Nikmati Ayapi tanpa perlu keluar rumah",
-    image: "/promos/promo-free-delivery.jpg",
-    bannerImage: "/promos/promo-free-delivery.jpg",
-    ctaText: "See More",
-    actionType: "modal",
-    details: {
-      highlight: "Gratis Ongkir Langsung ke Pintu Rumahmu!",
-      description: "Pesan menu favoritmu dan nikmati Ayapi dari rumah tanpa biaya ongkir. Cek ketersediaan promo dan area jangkauan delivery melalui WhatsApp kami.",
-      points: [
-        "Pesan langsung tanpa aplikasi ojol pihak ketiga",
-        "Ayam tiba dalam keadaan hangat, renyah, dan fresh",
-        "Tersedia untuk area delivery terdekat outlet Ayapi",
-      ],
-      actionButtonText: "Pesan via WhatsApp Delivery",
-      actionButtonUrl: "https://wa.me/628213444730?text=Halo%20Ayapi!%20Saya%20mau%20pesan%20menu%20Free%20Delivery",
-    },
-  },
-  {
-    id: "tetangga-ayapi",
-    badge: "🌴 KHUSUS KTP JIMBARAN",
-    title: "TETANGGA AYAPI",
-    desc: "Upgrade minuman khusus KTP Jimbaran",
-    image: "/promos/promo-tetangga-ayapi.jpg",
-    bannerImage: "/promos/promo-tetangga-ayapi.jpg",
-    ctaText: "See More",
-    actionType: "modal",
-    details: {
-      highlight: "Teman Santay Andalan Khusus Tetangga Jimbaran!",
-      description: "Apresiasi kami untuk warga sekitar! Dapatkan GRATIS upgrade minuman setiap pembelian menu ayam Ayapi cukup dengan menunjukkan KTP Jimbaran Anda.",
-      points: [
-        "Cukup tunjukkan KTP beralamat Jimbaran saat memesan",
-        "Gratis upgrade ke Teh Manis Jumbo atau varian minuman favorit",
-        "Berlaku untuk Dine-in & Take Away di outlet Ayapi Jimbaran",
-      ],
-      actionButtonText: "Cek Lokasi Outlet Jimbaran",
-      actionButtonUrl: "/#cabang",
-    },
-  },
-  {
-    id: "spesial-pelajar",
-    badge: "🎓 PROMO PELAJAR & MAHASISWA",
-    title: "SPESIAL UNTUK PELAJAR",
-    desc: "Nasi + ayam hanya 15RB!",
-    image: "/promos/promo-spesial-pelajar.jpg",
-    bannerImage: "/promos/promo-spesial-pelajar.jpg",
-    ctaText: "See More",
-    actionType: "modal",
-    details: {
-      highlight: "Porsi Kenyang, Sambal Mantap, Cuma 15RB!",
-      description: "Makan kenyang tanpa bikin kantong jebol! Paket hemat nasi pulen hangat + ayam renyah + Es Teh manis segar khusus untuk kamu para pelajar dan mahasiswa.",
-      points: [
-        "Paket lengkap Nasi + Ayam Gurih + Es Teh Manis",
-        "Hanya Rp 15.000 (harga khusus pelajar)",
-        "Tunjukkan kartu pelajar/mahasiswa atau kenakan seragam",
-      ],
-      actionButtonText: "Lihat Semua Menu",
-      actionButtonUrl: "/menu",
-    },
-  },
-  {
-    id: "paket-ulang-tahun",
-    badge: "🎂 EVENT & PARTY",
-    title: "PAKET ULANG TAHUN",
-    desc: "Rayakan hari istimewa Bersama kami",
-    image: "/promos/promo-paket-ulang-tahun.jpg",
-    bannerImage: "/promos/promo-paket-ulang-tahun.jpg",
-    ctaText: "See More",
-    actionType: "modal",
-    details: {
-      highlight: "Rayakan Hari Istimewa Penuh Keceriaan Bersama Ayapi!",
-      description: "Bikin pesta ulang tahun makin seru dengan paket hidangan ayam krisbar, dekorasi balon meriah, dan bingkisan spesial dari Ayapi.",
-      points: [
-        "Paket makanan praktis dan higienis untuk teman & keluarga",
-        "Bisa pesan untuk acara di outlet atau diantar langsung ke lokasi pesta",
-        "Scan barcode atau klik tombol di bawah untuk konsultasi paket dengan tim kami",
-      ],
-      actionButtonText: "Chat WhatsApp Kemitraan & Event",
-      actionButtonUrl: "https://wa.me/628213444730?text=Halo%20Tim%20Ayapi!%20Saya%20ingin%20tanya%20detail%20Paket%20Ulang%20Tahun",
-      showQrCode: true,
-    },
-  },
-  {
-    id: "kemitraan",
-    badge: "💼 BISNIS KULINER",
-    title: "KEMITRAAN",
-    desc: "Dapatkan harga spesial untuk kemitraan",
-    image: "/promos/promo-kemitraan.jpg",
-    bannerImage: "/promos/promo-kemitraan.jpg",
-    ctaText: "See More",
-    actionType: "link",
-    linkUrl: "/kemitraan",
-    details: {
-      highlight: "Peluang Usaha Kuliner Menguntungkan",
-      description: "Sesuaikan model kemitraan Anda. Mulai dari Rombong Express praktis hingga Restoran modern dengan promo investasi spesial mulai 15 Juta.",
-      points: [
-        "Sistem SOP teruji & operasional tanpa koki",
-        "Bumbu rahasia disuplai terpusat",
-        "Estimasi BEP balik modal cepat 5 - 8 bulan",
-      ],
-      actionButtonText: "Buka Halaman Kemitraan",
-      actionButtonUrl: "/kemitraan",
-    },
-  },
-  {
-    id: "paket-keluarga",
-    badge: "🍗 PAKET RAME-RAME",
-    title: "PAKET KELUARGA & BUCKET",
-    desc: "Makan kenyang bareng keluarga & teman lebih hemat",
-    image: "/promos/promo-paket-keluarga.jpg",
-    bannerImage: "/promos/promo-paket-keluarga.jpg",
-    ctaText: "See More",
-    actionType: "modal",
-    details: {
-      highlight: "Kenyang Rame-Rame, Makin Akrab Bareng Ayapi!",
-      description: "Pilihan pas untuk kumpul keluarga, rekan kerja, atau nobar! Dapatkan 1 Bucket Ayam Krisbar renyah lengkap dengan porsi nasi dan es teh jumbo dengan harga spesial.",
-      points: [
-        "1 Bucket Isi 8 Potong Ayam Krispi Renyah Gurih",
-        "Lengkap dengan 4 Nasi Putih + 4 Es Teh Manis Segar",
-        "Ekstra sambal pilihan (Sambal Korek / Sambal Krisbar)",
-      ],
-      actionButtonText: "Pesan Paket Rame-Rame via WhatsApp",
-      actionButtonUrl: "https://wa.me/628213444730?text=Halo%20Ayapi!%20Saya%20ingin%20pesan%20Paket%20Rame-Rame%20Keluarga",
-    },
-  },
-];
-
 export default function Home() {
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(defaultHeroSlides);
@@ -236,6 +86,7 @@ export default function Home() {
 
   // Promo Modal State
   const [selectedPromo, setSelectedPromo] = useState<PromoItem | null>(null);
+  const [promoList, setPromoList] = useState<PromoItem[]>(defaultPromoItems);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
 
   // Data States
@@ -243,17 +94,29 @@ export default function Home() {
   const [branches, setBranches] = useState<Branch[]>([]);
 
   useEffect(() => {
-    // Generate QR code for WhatsApp Kemitraan / Birthday reservation
-    QRCode.toDataURL(
-      "https://wa.me/628213444730?text=Halo%20Tim%20Ayapi!%20Saya%20ingin%20tanya%20detail%20Paket%20Ulang%20Tahun%20dan%20Kemitraan",
-      {
+    if (selectedPromo?.details?.showQrCode) {
+      const targetUrl =
+        selectedPromo.details.actionButtonUrl ||
+        "https://wa.me/628213444730?text=Halo%20Tim%20Ayapi!%20Saya%20ingin%20tanya%20detail%20Paket%20Promo";
+      QRCode.toDataURL(targetUrl, {
         width: 260,
         margin: 1,
         color: { dark: "#99000B", light: "#FFFFFF" },
-      }
-    )
-      .then(setQrCodeUrl)
-      .catch((err) => console.error("QR Code generation error:", err));
+      })
+        .then(setQrCodeUrl)
+        .catch((err) => console.error("QR Code generation error:", err));
+    }
+  }, [selectedPromo]);
+
+  useEffect(() => {
+    // Fetch dynamic promos
+    getPromos()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setPromoList(data);
+        }
+      })
+      .catch((err) => console.error("Error fetching promos:", err));
 
     // Fetch hero slides
     getHeroSlides()
@@ -494,13 +357,13 @@ export default function Home() {
             </h2>
             <div className="h-1.5 w-20 bg-gradient-to-r from-brand-red to-brand-orange mx-auto rounded-full mb-4"></div>
             <p className="text-gray-600 text-sm md:text-base leading-relaxed font-medium">
-              Nikmati beragam penawaran hemat mulai dari Free Delivery, upgrade minuman, paket pelajar, perayaan ulang tahun, hingga promo kemitraan outlet.
+              Nikmati beragam penawaran hemat mulai dari Free Delivery, upgrade minuman, paket pelajar, perayaan ulang tahun, hingga paket hemat keluarga.
             </p>
           </div>
 
           {/* PROMO CARDS GRID */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {promoItems.map((promo) => (
+            {promoList.map((promo) => (
               <div
                 key={promo.id}
                 className="bento-card bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between group overflow-hidden h-full"

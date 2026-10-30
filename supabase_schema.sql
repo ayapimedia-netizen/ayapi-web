@@ -257,6 +257,38 @@ FOR SELECT
 USING (is_active = true AND deleted_at IS NULL);
 
 
+-- 13. Tabel promos
+CREATE TABLE IF NOT EXISTS public.promos (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    badge TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    image TEXT NOT NULL,
+    banner_image TEXT NOT NULL,
+    cta_text TEXT DEFAULT 'See More' NOT NULL,
+    action_type TEXT DEFAULT 'modal' NOT NULL,
+    link_url TEXT DEFAULT '',
+    highlight TEXT DEFAULT '',
+    details_description TEXT DEFAULT '',
+    points JSONB DEFAULT '[]'::jsonb NOT NULL,
+    action_button_text TEXT DEFAULT '',
+    action_button_url TEXT DEFAULT '',
+    show_qr_code BOOLEAN DEFAULT false NOT NULL,
+    sort_order INTEGER DEFAULT 0 NOT NULL,
+    is_active BOOLEAN DEFAULT true NOT NULL,
+    deleted_at TIMESTAMPTZ DEFAULT NULL,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+ALTER TABLE public.promos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Izinkan publik membaca promo aktif" ON public.promos;
+CREATE POLICY "Izinkan publik membaca promo aktif"
+ON public.promos
+FOR SELECT
+USING (is_active = true AND deleted_at IS NULL);
+
+
 -- =========================================================================
 -- INITIAL SEED DATA
 -- =========================================================================

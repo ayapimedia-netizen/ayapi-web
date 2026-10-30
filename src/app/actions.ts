@@ -123,6 +123,9 @@ export type FAQItem = {
   deleted_at?: string;
 };
 
+import { PromoItem, defaultPromoItems } from "@/lib/promo-defaults";
+export type { PromoItem };
+
 
 // Fallback Static Data in case Supabase is not connected/configured
 const fallbackMenuItems: MenuItem[] = [
@@ -133,7 +136,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 29.000",
     description: "Nasi hangat pulen + Ayam Paha Bawah/Sayap bakar bumbu khas Ayapi + Minuman segar.",
     category: "krisbar",
-    image: "/menu/menu-krisbar-utama.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792064276715-wcbe78.webp",
   },
   {
     id: "fb-2",
@@ -141,7 +144,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 32.000",
     description: "Nasi hangat pulen + Ayam Paha Atas/Dada bakar bumbu karamel smoky khas Ayapi + Minuman segar.",
     category: "krisbar",
-    image: "/menu/menu-krisbar-utama.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792064311856-3md2pj.webp",
   },
   {
     id: "fb-3",
@@ -149,7 +152,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 25.000",
     description: "Nasi hangat pulen + Ayam Paha Bawah/Sayap bakar bumbu khas Ayapi + Es Teh manis segar.",
     category: "krisbar",
-    image: "/menu/menu-fc1-drumstick.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792064541802-p08vw6.webp",
   },
   {
     id: "fb-4",
@@ -157,7 +160,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 27.000",
     description: "Nasi hangat pulen + Ayam Paha Atas/Dada bakar bumbu khas Ayapi + Es Teh manis segar.",
     category: "krisbar",
-    image: "/menu/menu-fc2-dada.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792064340055-amwp1u.webp",
   },
   {
     id: "fb-5",
@@ -165,7 +168,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 39.000",
     description: "Nasi hangat + 1 Paha Bawah/Sayap + 1 Paha Atas/Dada + Minuman + 1 varian sambal porsi double.",
     category: "krisbar",
-    image: "/menu/menu-krisbar-lava.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792064578694-vc8qta.webp",
   },
 
   // 2. Satset Krispy
@@ -175,7 +178,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 18.000",
     description: "Nasi hangat pulen + 1 potong ayam krispi renyah bumbu marinasi gurih khas Ayapi.",
     category: "krispy",
-    image: "/menu/menu-viral-sayap.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792062900030-xyc1yv.webp",
   },
   {
     id: "fb-7",
@@ -183,7 +186,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 25.000",
     description: "Nasi hangat pulen + 1 potong ayam krispi paha atas/dada renyah juicy keemasan.",
     category: "krispy",
-    image: "/menu/menu-fc2-dada.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792063119054-bjwa3r.webp",
   },
   {
     id: "fb-8",
@@ -191,7 +194,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 27.000",
     description: "2 potong ayam krispi renyah gurih berselimut bumbu krispi spesial.",
     category: "krispy",
-    image: "/menu/menu-kulit-crispy.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792065075729-my22ws.webp",
   },
 
   // 3. Paket Geprek
@@ -201,7 +204,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 20.000",
     description: "Nasi hangat + Ayam krispi gurih digeprek dengan sambal cabai rawit pedas mantap.",
     category: "geprek",
-    image: "/menu/menu-viral-geprek.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792064862351-92dm8p.webp",
   },
   {
     id: "fb-10",
@@ -209,7 +212,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 25.000",
     description: "Nasi hangat + Ayam krispi porsi jumbo digeprek pedas nampol.",
     category: "geprek",
-    image: "/menu/menu-viral-geprek.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792064880371-tjdsy3.webp",
   },
   {
     id: "fb-11",
@@ -217,7 +220,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 25.000",
     description: "Nasi hangat + Ayam geprek renyah pedas + Minuman segar pelepas dahaga.",
     category: "geprek",
-    image: "/menu/menu-fc1-drumstick.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792065467418-nk1hdg.webp",
   },
   {
     id: "fb-12",
@@ -225,7 +228,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 27.000",
     description: "Nasi hangat + Ayam geprek paha atas/dada juicy renyah + Minuman segar.",
     category: "geprek",
-    image: "/menu/menu-fc2-dada.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792065955058-gicfy2.webp",
   },
   {
     id: "fb-13",
@@ -233,7 +236,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 39.000",
     description: "Nasi hangat + 2 potong ayam geprek pedas gurih + Minuman segar.",
     category: "geprek",
-    image: "/menu/menu-viral-geprek.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792063503838-mn7wfi.webp",
   },
   {
     id: "fb-14",
@@ -241,7 +244,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 25.000",
     description: "Mie goreng kenyal lezat disajikan dengan ayam krispi geprek sambal rawit spesial.",
     category: "geprek",
-    image: "/menu/menu-mie-geprek.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792066349159-nohu7y.webp",
   },
   {
     id: "fb-15",
@@ -249,7 +252,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 50.000",
     description: "Nasi hangat + Daging sapi empuk berbumbu rempah digeprek dengan sambal pedas nampol.",
     category: "geprek",
-    image: "/menu/menu-sapi-geprek.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792067446424-nmbsq9.webp",
   },
 
   // 4. Paket Rame-Rame & Utuh
@@ -259,7 +262,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 139.000",
     description: "1 Ekor Ayam Utuh Krispy Bakar + 3 Nasi putih + 2 Varian Sambal + 2 Minuman.",
     category: "patungan",
-    image: "/menu/menu-paket-patungan.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792066405802-kfwujj.webp",
   },
   {
     id: "fb-17",
@@ -267,7 +270,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 100.000",
     description: "3 Ayam Paha Bawah/Sayap + 2 Ayam Paha Atas/Dada + 4 Nasi putih + 2 Minuman.",
     category: "patungan",
-    image: "/menu/menu-paket-gilak.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792066234356-nk17hz.webp",
   },
   {
     id: "fb-18",
@@ -275,7 +278,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 112.000",
     description: "3 Ayam Paha Bawah/Sayap + 2 Ayam Paha Atas/Dada + 2 Varian Sambal + 4 Nasi putih + 2 Minuman.",
     category: "patungan",
-    image: "/menu/menu-paket-gilak.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792066271768-59336o.webp",
   },
   {
     id: "fb-19",
@@ -283,7 +286,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 117.000",
     description: "3 Ayam Paha Bawah/Sayap + 2 Ayam Paha Atas/Dada Krisbar + 2 Varian Sambal + 4 Nasi putih + 2 Minuman.",
     category: "patungan",
-    image: "/menu/menu-paket-patungan.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792066293769-16mfm0.webp",
   },
   {
     id: "fb-20",
@@ -291,7 +294,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 99.000",
     description: "1 Ekor Ayam Utuh goreng krispi renyah keemasan + 2 Varian Sambal pilihan.",
     category: "patungan",
-    image: "/menu/menu-ayam-utuh.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792067494490-vxkncx.webp",
   },
   {
     id: "fb-21",
@@ -299,7 +302,7 @@ const fallbackMenuItems: MenuItem[] = [
     price: "Rp 115.000",
     description: "1 Ekor Ayam Utuh krispi dibakar bumbu karamel khas Ayapi + 2 Varian Sambal pilihan.",
     category: "patungan",
-    image: "/menu/menu-ayam-utuh.jpg",
+    image: "https://vhoijuysgyuywvpdcirz.supabase.co/storage/v1/object/public/ayapi-media/1792066917163-9xqk00.webp",
   },
 
   // 5. Minuman
@@ -2424,15 +2427,22 @@ const fallbackPackages: PartnershipPackage[] = [
     name: "Paket Resto",
     price_text: "180 Juta*",
     price_value: 180000000,
-    description: "Resto premium & full experience. Ukuran: 6 x 8 METER. Konsep flagship resto dengan kapasitas maksimal, interior mewah, dan pengalaman kuliner terlengkap.",
+    description: "Resto premium & full experience. Ukuran: 6 x 8 METER. Konsep flagship resto dengan kapasitas 30-36 orang, area dine in & take away terpisah, serta dapur belakang yang efisien.",
     badge: "Flagship Resto",
     image: "/packages/resto-outlet-3.jpg",
     inclusions: [
       "Desain Interior & Renovasi Full Experience (6 x 8 M)",
+      "Kapasitas Dine-in Nyaman (30 - 36 Orang)",
+      "Area Order & Take Away Terpisah",
+      "Dapur di Bagian Belakang & Peralatan Lengkap",
+      "Desain Modern, Terang & Identitas Ayapi Kuat",
+      "Cocok untuk Ruko, Perumahan, & Area Ramai",
       "Peralatan Dapur Premium Kapasitas Maksimal",
-      "Kapasitas Dine-in Luas & Nyaman (30+ Kursi)",
-      "Paket Bahan Baku Terlengkap",
-      "Pendampingan Grand Opening Tim Pusat",
+      "Paket Bahan Baku & Bumbu Terlengkap",
+      "Sistem POS Kasir & Pelatihan Komprehensif",
+      "Media Promosi Lengkap & Branding Eksklusif",
+      "Terdaftar di Platform Pesan Antar Online",
+      "Pendampingan Grand Opening Tim Pusat & Operasional",
       "Kampanye Marketing & Influencer Launching",
     ],
     sort_order: 4,
@@ -2518,7 +2528,24 @@ export async function updatePartnershipPackage(id: string, pkg: Partial<Partners
     throw new Error("Supabase is not configured yet.");
   }
 
+  // If image is changing, delete old storage file if it belongs to storage
+  if (pkg.image) {
+    try {
+      const { data: oldPkg } = await supabaseAdmin
+        .from("partnership_packages")
+        .select("image")
+        .eq("id", id)
+        .single();
+      if (oldPkg?.image && oldPkg.image !== pkg.image) {
+        await deleteStorageFile(oldPkg.image);
+      }
+    } catch (e) {
+      console.warn("Could not clean old package image:", e);
+    }
+  }
+
   const payload = { ...pkg };
+  delete (payload as any).id;
   if (payload.badge === undefined) delete payload.badge;
 
   const { data, error } = await supabaseAdmin
@@ -2798,12 +2825,147 @@ export async function swapFaqOrder(id1: string, order1: number, id2: string, ord
 }
 
 /* =========================================================================
-   12. TRASH BIN (KERANJANG SAMPAH) ACTIONS
+   12. PROMO ITEMS (POP-UP & HOME BANNER) ACTIONS
+   ========================================================================= */
+
+async function fetchAllPromosFromStorage(): Promise<PromoItem[]> {
+  if (!isSupabaseConfigured()) return defaultPromoItems;
+  try {
+    const { data, error } = await supabase.from("settings").select("value").eq("key", "site_promos").single();
+    if (error || !data?.value) {
+      return defaultPromoItems;
+    }
+    const parsed = JSON.parse(data.value);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+    return defaultPromoItems;
+  } catch (err) {
+    console.error("Error reading promos from settings:", err);
+    return defaultPromoItems;
+  }
+}
+
+async function saveAllPromosToStorage(items: PromoItem[]) {
+  if (!isSupabaseConfigured()) return;
+  const { error } = await supabaseAdmin.from("settings").upsert({
+    key: "site_promos",
+    value: JSON.stringify(items),
+  });
+  if (error) {
+    console.error("Error saving promos to settings:", error);
+    throw new Error(error.message || "Gagal menyimpan promo.");
+  }
+}
+
+// Public: fetch active promos
+export async function getPromos(): Promise<PromoItem[]> {
+  const all = await fetchAllPromosFromStorage();
+  return all
+    .filter((item) => (item.is_active ?? true) && !item.deleted_at)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+}
+
+// Admin: fetch all promos
+export async function getAdminPromos(): Promise<PromoItem[]> {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+  await purgeExpiredDeletedItems();
+  const all = await fetchAllPromosFromStorage();
+  return all
+    .filter((item) => !item.deleted_at)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+}
+
+export async function addPromo(promo: Omit<PromoItem, "id" | "created_at">) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+  const all = await fetchAllPromosFromStorage();
+  const maxOrder = all.reduce((max, item) => Math.max(max, item.sort_order ?? 0), 0);
+  const newPromo: PromoItem = {
+    ...promo,
+    id: "promo-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 6),
+    sort_order: promo.sort_order ?? maxOrder + 1,
+    is_active: promo.is_active ?? true,
+    deleted_at: null,
+    created_at: new Date().toISOString(),
+  };
+  all.push(newPromo);
+  await saveAllPromosToStorage(all);
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return newPromo;
+}
+
+export async function updatePromo(id: string, updates: Partial<PromoItem>) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+  const all = await fetchAllPromosFromStorage();
+  const index = all.findIndex((item) => item.id === id);
+  if (index === -1) throw new Error("Promo tidak ditemukan.");
+  all[index] = {
+    ...all[index],
+    ...updates,
+    details: {
+      ...all[index].details,
+      ...(updates.details || {}),
+    },
+  };
+  await saveAllPromosToStorage(all);
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return all[index];
+}
+
+export async function deletePromo(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+  const all = await fetchAllPromosFromStorage();
+  const index = all.findIndex((item) => item.id === id);
+  if (index === -1) throw new Error("Promo tidak ditemukan.");
+  all[index].deleted_at = new Date().toISOString();
+  await saveAllPromosToStorage(all);
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { success: true, data: all[index] };
+}
+
+export async function restorePromo(id: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+  const all = await fetchAllPromosFromStorage();
+  const index = all.findIndex((item) => item.id === id);
+  if (index === -1) throw new Error("Promo tidak ditemukan.");
+  all[index].deleted_at = null;
+  await saveAllPromosToStorage(all);
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return all[index];
+}
+
+export async function swapPromoOrder(id1: string, order1: number, id2: string, order2: number) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+  const all = await fetchAllPromosFromStorage();
+  const item1 = all.find((i) => i.id === id1);
+  const item2 = all.find((i) => i.id === id2);
+  if (item1 && item2) {
+    item1.sort_order = order2;
+    item2.sort_order = order1;
+    await saveAllPromosToStorage(all);
+  }
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+/* =========================================================================
+   13. TRASH BIN (KERANJANG SAMPAH) ACTIONS
    ========================================================================= */
 
 export type TrashItem = {
   id: string;
-  type: "menu" | "gallery" | "branch" | "link" | "slideshow" | "testimonial" | "package" | "faq";
+  type: "menu" | "gallery" | "branch" | "link" | "slideshow" | "testimonial" | "package" | "faq" | "promo";
   title: string;
   subtitle?: string;
   image?: string;
@@ -2853,6 +3015,18 @@ export async function getTrashItems(): Promise<TrashItem[]> {
       testimonials.forEach((t) => trash.push({ id: t.id, type: "testimonial", title: t.name, subtitle: `Testimoni (${t.role})`, deleted_at: t.deleted_at }));
     }
 
+    const allPromos = await fetchAllPromosFromStorage();
+    allPromos.filter(p => p.deleted_at).forEach(p => {
+      trash.push({
+        id: p.id,
+        type: "promo",
+        title: p.title,
+        subtitle: `Promo Pop-up (${p.badge})`,
+        image: p.image,
+        deleted_at: p.deleted_at!,
+      });
+    });
+
     trash.sort((a, b) => new Date(b.deleted_at).getTime() - new Date(a.deleted_at).getTime());
     return trash;
   } catch (err) {
@@ -2864,9 +3038,22 @@ export async function getTrashItems(): Promise<TrashItem[]> {
 export async function permanentDeleteTrashItem(id: string, type: TrashItem["type"]) {
   const isAdmin = await checkAdminSession();
   if (!isAdmin) throw new Error("Unauthorized");
-  if (!isSupabaseConfigured() || !isValidUuid(id)) return { success: true };
+  if (!isSupabaseConfigured()) return { success: true };
 
-  const tableMap: Record<TrashItem["type"], string> = {
+  if (type === "promo") {
+    const all = await fetchAllPromosFromStorage();
+    const item = all.find((i) => i.id === id);
+    if (item?.image) await deleteStorageFile(item.image);
+    if (item?.bannerImage && item.bannerImage !== item.image) await deleteStorageFile(item.bannerImage);
+    const updated = all.filter((i) => i.id !== id);
+    await saveAllPromosToStorage(updated);
+    revalidatePath("/admin");
+    return { success: true };
+  }
+
+  if (!isValidUuid(id)) return { success: true };
+
+  const tableMap: Record<Exclude<TrashItem["type"], "promo">, string> = {
     menu: "menu_items",
     gallery: "gallery_items",
     branch: "branches",
@@ -2877,7 +3064,7 @@ export async function permanentDeleteTrashItem(id: string, type: TrashItem["type
     faq: "faqs",
   };
 
-  const tableName = tableMap[type];
+  const tableName = tableMap[type as Exclude<TrashItem["type"], "promo">];
   if (!tableName) return { success: false };
 
   if (type === "menu" || type === "gallery" || type === "slideshow") {
@@ -2895,9 +3082,17 @@ export async function permanentDeleteTrashItem(id: string, type: TrashItem["type
 export async function restoreTrashItem(id: string, type: TrashItem["type"]) {
   const isAdmin = await checkAdminSession();
   if (!isAdmin) throw new Error("Unauthorized");
-  if (!isSupabaseConfigured() || !isValidUuid(id)) return { success: true };
+  if (!isSupabaseConfigured()) return { success: true };
 
-  const tableMap: Record<TrashItem["type"], string> = {
+  if (type === "promo") {
+    await restorePromo(id);
+    revalidatePath("/admin");
+    return { success: true };
+  }
+
+  if (!isValidUuid(id)) return { success: true };
+
+  const tableMap: Record<Exclude<TrashItem["type"], "promo">, string> = {
     menu: "menu_items",
     gallery: "gallery_items",
     branch: "branches",
@@ -2908,7 +3103,7 @@ export async function restoreTrashItem(id: string, type: TrashItem["type"]) {
     faq: "faqs",
   };
 
-  const tableName = tableMap[type];
+  const tableName = tableMap[type as Exclude<TrashItem["type"], "promo">];
   if (!tableName) return { success: false };
 
   const { error } = await supabaseAdmin.from(tableName).update({ deleted_at: null }).eq("id", id);

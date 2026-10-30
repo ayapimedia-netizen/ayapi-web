@@ -83,6 +83,14 @@ import {
   restoreFaq,
   swapFaqOrder,
   FAQItem,
+  // Promo Actions
+  getAdminPromos,
+  addPromo,
+  updatePromo,
+  deletePromo,
+  restorePromo,
+  swapPromoOrder,
+  PromoItem,
   getTrashItems,
   restoreTrashItem,
   permanentDeleteTrashItem,
@@ -158,7 +166,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   
   // Tab State
-  type TabType = "menu" | "category" | "gallery" | "branch" | "leads" | "links" | "slideshow" | "testimonials" | "settings" | "packages" | "faqs" | "trash";
+  type TabType = "menu" | "category" | "gallery" | "branch" | "leads" | "links" | "slideshow" | "promos" | "testimonials" | "settings" | "packages" | "faqs" | "trash";
   const [activeTab, setActiveTabState] = useState<TabType>("menu");
 
   const setActiveTab = (tab: TabType) => {
@@ -178,6 +186,7 @@ export default function AdminDashboard() {
   const [links, setLinks] = useState<LinkItem[]>([]);
   const [theme, setTheme] = useState<string>("peach");
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
+  const [promos, setPromos] = useState<PromoItem[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [siteSettings, setSiteSettings] = useState<Record<string, string>>({});
   const [packages, setPackages] = useState<PartnershipPackage[]>([]);
@@ -188,7 +197,7 @@ export default function AdminDashboard() {
   // Undo / Garbage Collection State
   type UndoItem = {
     id: string;
-    type: "menu" | "gallery" | "branch" | "link" | "slide" | "testimonial" | "package" | "faq";
+    type: "menu" | "gallery" | "branch" | "link" | "slide" | "promo" | "testimonial" | "package" | "faq";
     name: string;
     secondsRemaining: number;
     restoreAction: (id: string) => Promise<any>;
@@ -203,6 +212,7 @@ export default function AdminDashboard() {
   const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [isSlideModalOpen, setIsSlideModalOpen] = useState(false);
+  const [isPromoModalOpen, setIsPromoModalOpen] = useState(false);
   const [isTestimonialModalOpen, setIsTestimonialModalOpen] = useState(false);
   const [isPackageModalOpen, setIsPackageModalOpen] = useState(false);
   const [isFaqModalOpen, setIsFaqModalOpen] = useState(false);
@@ -213,6 +223,7 @@ export default function AdminDashboard() {
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
   const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
+  const [editingPromo, setEditingPromo] = useState<PromoItem | null>(null);
   const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null);
   const [editingPackage, setEditingPackage] = useState<PartnershipPackage | null>(null);
   const [editingFaq, setEditingFaq] = useState<FAQItem | null>(null);
@@ -284,6 +295,32 @@ export default function AdminDashboard() {
   const [slideButton2Text, setSlideButton2Text] = useState("");
   const [slideButton2Link, setSlideButton2Link] = useState("");
   const [slideIsActive, setSlideIsActive] = useState(true);
+
+  // Form Fields - Promo
+  const [promoTitle, setPromoTitle] = useState("");
+  const [promoBadge, setPromoBadge] = useState("");
+  const [promoDesc, setPromoDesc] = useState("");
+  const [promoCtaText, setPromoCtaText] = useState("See More");
+  const [promoActionType, setPromoActionType] = useState<"modal" | "link">("modal");
+  const [promoLinkUrl, setPromoLinkUrl] = useState("");
+  const [promoIsActive, setPromoIsActive] = useState(true);
+  const [promoHighlight, setPromoHighlight] = useState("");
+  const [promoDetailsDescription, setPromoDetailsDescription] = useState("");
+  const [promoPoints, setPromoPoints] = useState<string[]>([]);
+  const [newPointInput, setNewPointInput] = useState("");
+  const [promoActionButtonText, setPromoActionButtonText] = useState("");
+  const [promoActionButtonUrl, setPromoActionButtonUrl] = useState("");
+  const [promoShowQrCode, setPromoShowQrCode] = useState(false);
+
+  // File upload states for promo
+  const [promoSelectedFile, setPromoSelectedFile] = useState<File | null>(null);
+  const [promoImagePreview, setPromoImagePreview] = useState<string>("");
+  const [promoImageUrlInput, setPromoImageUrlInput] = useState<string>("");
+
+  const [bannerSelectedFile, setBannerSelectedFile] = useState<File | null>(null);
+  const [bannerImagePreview, setBannerImagePreview] = useState<string>("");
+  const [bannerImageUrlInput, setBannerImageUrlInput] = useState<string>("");
+  const [useSameImageForBanner, setUseSameImageForBanner] = useState(true);
 
   // Form Fields - Testimonial
   const [testimonialName, setTestimonialName] = useState("");
@@ -384,7 +421,7 @@ export default function AdminDashboard() {
   // Trigger Undo registration
   const triggerUndo = (
     id: string,
-    type: "menu" | "gallery" | "branch" | "link" | "slide" | "testimonial" | "package" | "faq",
+    type: "menu" | "gallery" | "branch" | "link" | "slide" | "promo" | "testimonial" | "package" | "faq",
     name: string,
     restoreAction: (id: string) => Promise<any>,
     reloadCallback: () => void
@@ -425,6 +462,7 @@ export default function AdminDashboard() {
           linksData,
           themeData,
           slidesData,
+          promosData,
           testimonialsData,
           settingsData,
           packagesData,
@@ -439,6 +477,7 @@ export default function AdminDashboard() {
           getAdminLinks(),
           getThemeSetting(),
           getAdminHeroSlides(),
+          getAdminPromos(),
           getAdminTestimonials(),
           getAllSiteSettings(),
           getAdminPartnershipPackages(),
@@ -455,6 +494,7 @@ export default function AdminDashboard() {
           setLinks(linksData);
           setTheme(themeData);
           setHeroSlides(slidesData);
+          setPromos(promosData);
           setTestimonials(testimonialsData);
           setSiteSettings(settingsData);
           setPackages(packagesData);
@@ -1313,7 +1353,7 @@ export default function AdminDashboard() {
       try {
         const siteUrl = typeof window !== "undefined"
           ? `${window.location.protocol}//${window.location.host}/links`
-          : "https://ayapikrispibar.com/links";
+          : "https://ayapiku.com/links";
 
         const url = await QRCode.toDataURL(siteUrl, {
           width: 400,
@@ -1466,6 +1506,227 @@ export default function AdminDashboard() {
       console.error(err);
       const errMsg = err instanceof Error ? err.message : `Gagal menghapus slide "${alt}".`;
       showMsg("error", errMsg);
+    }
+  };
+
+  // ============================================================
+  // PROMO HANDLERS
+  // ============================================================
+
+  const reloadPromos = async () => {
+    try {
+      const data = await getAdminPromos();
+      setPromos(data);
+    } catch (err) {
+      console.error("Gagal memuat data promo:", err);
+    }
+  };
+
+  const openPromoAdd = () => {
+    setEditingPromo(null);
+    setPromoTitle("");
+    setPromoBadge("🔥 PROMO SPESIAL");
+    setPromoDesc("");
+    setPromoCtaText("See More");
+    setPromoActionType("modal");
+    setPromoLinkUrl("");
+    setPromoIsActive(true);
+    setPromoHighlight("");
+    setPromoDetailsDescription("");
+    setPromoPoints([
+      "Pesan langsung tanpa perantara",
+      "Menu higienis, hangat, dan fresh",
+      "Tersedia untuk makan di tempat dan take away"
+    ]);
+    setNewPointInput("");
+    setPromoActionButtonText("Pesan via WhatsApp");
+    setPromoActionButtonUrl("https://wa.me/628213444730");
+    setPromoShowQrCode(false);
+
+    setPromoSelectedFile(null);
+    setPromoImagePreview("");
+    setPromoImageUrlInput("");
+
+    setBannerSelectedFile(null);
+    setBannerImagePreview("");
+    setBannerImageUrlInput("");
+    setUseSameImageForBanner(true);
+
+    setFormErrors({});
+    setIsPromoModalOpen(true);
+  };
+
+  const openPromoEdit = (p: PromoItem) => {
+    setEditingPromo(p);
+    setPromoTitle(p.title);
+    setPromoBadge(p.badge || "");
+    setPromoDesc(p.desc || "");
+    setPromoCtaText(p.ctaText || "See More");
+    setPromoActionType(p.actionType || "modal");
+    setPromoLinkUrl(p.linkUrl || "");
+    setPromoIsActive(p.is_active ?? true);
+    setPromoHighlight(p.details?.highlight || "");
+    setPromoDetailsDescription(p.details?.description || "");
+    setPromoPoints(p.details?.points ? [...p.details.points] : []);
+    setNewPointInput("");
+    setPromoActionButtonText(p.details?.actionButtonText || "");
+    setPromoActionButtonUrl(p.details?.actionButtonUrl || "");
+    setPromoShowQrCode(p.details?.showQrCode ?? false);
+
+    setPromoSelectedFile(null);
+    setPromoImagePreview(p.image);
+    setPromoImageUrlInput(p.image);
+
+    setBannerSelectedFile(null);
+    setBannerImagePreview(p.bannerImage || p.image);
+    setBannerImageUrlInput(p.bannerImage || p.image);
+    setUseSameImageForBanner(p.bannerImage === p.image || !p.bannerImage);
+
+    setFormErrors({});
+    setIsPromoModalOpen(true);
+  };
+
+  const handleAddPromoPoint = () => {
+    if (!newPointInput.trim()) return;
+    setPromoPoints((prev) => [...prev, newPointInput.trim()]);
+    setNewPointInput("");
+  };
+
+  const handleRemovePromoPoint = (idx: number) => {
+    setPromoPoints((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handlePromoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const errors: Record<string, boolean> = {};
+    if (!promoTitle.trim()) errors.promoTitle = true;
+    if (!promoDesc.trim()) errors.promoDesc = true;
+    if (!promoSelectedFile && !promoImageUrlInput.trim()) errors.promoImage = true;
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      showMsg("error", "Silakan lengkapi kolom yang wajib diisi!");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFormErrors({});
+
+    try {
+      let finalCardImage = promoImageUrlInput.trim();
+      let finalBannerImage = bannerImageUrlInput.trim();
+
+      if (promoSelectedFile) {
+        setIsUploading(true);
+        let fileToUpload = promoSelectedFile;
+        try {
+          fileToUpload = await compressImage(promoSelectedFile);
+        } catch (compressionErr) {
+          console.warn("Compression failed, using original:", compressionErr);
+        }
+        const uploadData = new FormData();
+        uploadData.append("file", fileToUpload);
+        const res = await uploadImage(uploadData);
+        finalCardImage = res.url;
+        setIsUploading(false);
+      }
+
+      if (useSameImageForBanner) {
+        finalBannerImage = finalCardImage;
+      } else if (bannerSelectedFile) {
+        setIsUploading(true);
+        let fileToUpload = bannerSelectedFile;
+        try {
+          fileToUpload = await compressImage(bannerSelectedFile);
+        } catch (compressionErr) {
+          console.warn("Compression failed, using original:", compressionErr);
+        }
+        const uploadData = new FormData();
+        uploadData.append("file", fileToUpload);
+        const res = await uploadImage(uploadData);
+        finalBannerImage = res.url;
+        setIsUploading(false);
+      } else if (!finalBannerImage) {
+        finalBannerImage = finalCardImage;
+      }
+
+      const payload = {
+        title: promoTitle.trim(),
+        badge: promoBadge.trim(),
+        desc: promoDesc.trim(),
+        image: finalCardImage,
+        bannerImage: finalBannerImage,
+        ctaText: promoCtaText.trim() || "See More",
+        actionType: promoActionType,
+        linkUrl: promoLinkUrl.trim(),
+        is_active: promoIsActive,
+        details: {
+          highlight: promoHighlight.trim() || promoTitle.trim(),
+          description: promoDetailsDescription.trim() || promoDesc.trim(),
+          points: promoPoints.filter((p) => p.trim()),
+          actionButtonText: promoActionButtonText.trim(),
+          actionButtonUrl: promoActionButtonUrl.trim(),
+          showQrCode: promoShowQrCode,
+        },
+      };
+
+      if (editingPromo) {
+        await updatePromo(editingPromo.id, payload);
+        showMsg("success", `Promo "${promoTitle}" berhasil diperbarui!`);
+      } else {
+        await addPromo(payload);
+        showMsg("success", `Promo "${promoTitle}" berhasil ditambahkan!`);
+      }
+
+      setIsPromoModalOpen(false);
+      await reloadPromos();
+    } catch (err: any) {
+      console.error(err);
+      showMsg("error", err.message || "Gagal menyimpan promo.");
+    } finally {
+      setIsSubmitting(false);
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeletePromo = async (id: string, title: string) => {
+    try {
+      await deletePromo(id);
+      triggerUndo(id, "promo", title, restorePromo, reloadPromos);
+      await reloadPromos();
+      const trash = await getTrashItems();
+      setTrashItems(trash);
+      showMsg("success", `Promo "${title}" dipindahkan ke keranjang sampah.`);
+    } catch (err: any) {
+      console.error(err);
+      showMsg("error", err.message || "Gagal menghapus promo.");
+    }
+  };
+
+  const handleTogglePromoActive = async (p: PromoItem) => {
+    try {
+      const nextActive = !p.is_active;
+      await updatePromo(p.id, { is_active: nextActive });
+      await reloadPromos();
+      showMsg("success", `Status promo "${p.title}" diubah menjadi ${nextActive ? "Aktif" : "Nonaktif"}.`);
+    } catch (err: any) {
+      console.error(err);
+      showMsg("error", err.message || "Gagal mengubah status promo.");
+    }
+  };
+
+  const handleMovePromo = async (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= promos.length) return;
+    const current = promos[index];
+    const target = promos[targetIndex];
+    try {
+      await swapPromoOrder(current.id, current.sort_order ?? index + 1, target.id, target.sort_order ?? targetIndex + 1);
+      await reloadPromos();
+    } catch (err: any) {
+      console.error(err);
+      showMsg("error", err.message || "Gagal mengubah urutan promo.");
     }
   };
 
@@ -1650,7 +1911,7 @@ export default function AdminDashboard() {
     setPkgBadge(pkg.badge || "");
     setPkgInclusionsText(Array.isArray(pkg.inclusions) ? pkg.inclusions.join("\n") : "");
     setSelectedFile(null);
-    setImagePreview("");
+    setImagePreview(pkg.image || "");
     setImageUrlInput(pkg.image || "");
     setIsPackageModalOpen(true);
   };
@@ -1667,13 +1928,23 @@ export default function AdminDashboard() {
       let finalImageUrl = imageUrlInput;
       if (selectedFile) {
         setIsUploading(true);
+        let fileToUpload = selectedFile;
+        try {
+          fileToUpload = await compressImage(selectedFile);
+        } catch (compressionErr) {
+          console.warn("Client-side image compression failed, using original file:", compressionErr);
+        }
+
         const uploadData = new FormData();
-        uploadData.append("file", selectedFile);
+        uploadData.append("file", fileToUpload);
         const uploadResult = await uploadImage(uploadData);
         if (uploadResult?.url) finalImageUrl = uploadResult.url;
         setIsUploading(false);
       }
 
+      if (!finalImageUrl) {
+        finalImageUrl = editingPackage?.image || "/packages/booth-express-1.jpg";
+      }
 
       const inclusionsArray = pkgInclusionsText
         .split("\n")
@@ -1687,7 +1958,7 @@ export default function AdminDashboard() {
         price_value: pkgPriceValue,
         description: pkgDesc.trim(),
         badge: pkgBadge.trim(),
-        image: finalImageUrl || "/express_booth_mockup.png",
+        image: finalImageUrl,
         inclusions: inclusionsArray,
         sort_order: editingPackage ? editingPackage.sort_order : packages.length + 1,
       };
@@ -1709,6 +1980,7 @@ export default function AdminDashboard() {
       showMsg("error", err?.message || "Gagal menyimpan paket kemitraan.");
     } finally {
       setIsSubmitting(false);
+      setIsUploading(false);
     }
   };
 
@@ -1982,6 +2254,7 @@ export default function AdminDashboard() {
             { id: "leads", label: "Leads Kemitraan", icon: "💼", count: partnershipLeads.length },
             { id: "links", label: "Kelola Tautan", icon: "🔗", count: links.length },
             { id: "slideshow", label: "Slideshow", icon: "🖼️", count: heroSlides.length },
+            { id: "promos", label: "Promo Pop-up", icon: "🏷️", count: promos.length },
             { id: "testimonials", label: "Testimoni", icon: "💬", count: testimonials.length },
             { id: "settings", label: "Pengaturan Web", icon: "⚙️" },
             { id: "packages", label: "Paket Franchise", icon: "📦", count: packages.length },
@@ -2110,6 +2383,16 @@ export default function AdminDashboard() {
                       </svg>
                       Tambah Slide
                     </button>
+                  ) : activeTab === "promos" ? (
+                    <button
+                      onClick={openPromoAdd}
+                      className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all text-xs flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Tambah Promo
+                    </button>
                   ) : activeTab === "testimonials" ? (
                     <button
                       onClick={openTestimonialAdd}
@@ -2214,6 +2497,16 @@ export default function AdminDashboard() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                     </svg>
                     Tambah Slide
+                  </button>
+                ) : activeTab === "promos" ? (
+                  <button
+                    onClick={openPromoAdd}
+                    className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-6 py-3 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Tambah Promo
                   </button>
                 ) : activeTab === "testimonials" ? (
                   <button
@@ -3083,6 +3376,173 @@ export default function AdminDashboard() {
               </div>
             )}
 
+            {/* =================== PROMO POP-UP & BANNER TAB =================== */}
+            {activeTab === "promos" && (
+              <div className="space-y-6">
+                {/* Header Banner Guide */}
+                <div className="bg-gradient-to-r from-red-500/10 via-orange-500/10 to-amber-500/10 border border-brand-red/20 rounded-3xl p-5 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-brand-red bg-brand-red/10 px-2.5 py-0.5 rounded-full inline-block">
+                      🏷️ Modul Promo Beranda &amp; Pop-up
+                    </span>
+                    <h3 className="text-base font-black text-gray-900">Kelola Kartu Promo &amp; Detail Pop-up Modal</h3>
+                    <p className="text-xs text-gray-600 max-w-2xl leading-relaxed">
+                      Ubah gambar kartu, banner modal, badge diskon, syarat &amp; ketentuan, tombol reservasi WhatsApp, hingga barcode dengan mudah.
+                    </p>
+                  </div>
+                  <button
+                    onClick={openPromoAdd}
+                    className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all text-xs flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Tambah Promo
+                  </button>
+                </div>
+
+                {/* Table of Promos */}
+                <div className="bg-white border border-gray-100 rounded-3xl shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-100 bg-gray-50/80">
+                          <th className="py-4 px-6 text-left text-[10px] font-black uppercase tracking-wider text-gray-400">#</th>
+                          <th className="py-4 px-6 text-left text-[10px] font-black uppercase tracking-wider text-gray-400">Gambar Kartu</th>
+                          <th className="py-4 px-6 text-left text-[10px] font-black uppercase tracking-wider text-gray-400">Info Kartu Beranda</th>
+                          <th className="py-4 px-6 text-left text-[10px] font-black uppercase tracking-wider text-gray-400">Detail Pop-up Modal (&quot;Dalamnya&quot;)</th>
+                          <th className="py-4 px-6 text-center text-[10px] font-black uppercase tracking-wider text-gray-400">Status</th>
+                          <th className="py-4 px-6 text-center text-[10px] font-black uppercase tracking-wider text-gray-400">Urutan</th>
+                          <th className="py-4 px-6 text-center text-[10px] font-black uppercase tracking-wider text-gray-400">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {promos.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="py-16 text-center text-xs text-gray-400 font-bold">
+                              🏷️ Belum ada promo terdaftar. Klik &quot;Tambah Promo&quot; untuk membuat promo baru.
+                            </td>
+                          </tr>
+                        ) : (
+                          promos.map((promo, index) => (
+                            <tr key={promo.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                              <td className="py-4 px-6 text-xs font-bold text-gray-400">{index + 1}</td>
+                              <td className="py-4 px-6">
+                                <div className="w-24 h-16 rounded-xl overflow-hidden bg-gray-100 relative border border-gray-200/80 shadow-xs">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={promo.image} alt={promo.title} className="w-full h-full object-cover" />
+                                </div>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="space-y-1.5 max-w-[240px]">
+                                  {promo.badge && (
+                                    <span className="inline-block bg-brand-red text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                                      {promo.badge}
+                                    </span>
+                                  )}
+                                  <h4 className="text-xs font-black text-brand-dark leading-tight">{promo.title}</h4>
+                                  <p className="text-[10px] text-gray-500 line-clamp-2 leading-relaxed">{promo.desc}</p>
+                                  <div className="pt-1 flex items-center gap-2">
+                                    <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 border border-gray-200">
+                                      {promo.actionType === "link" ? `🔗 Link: ${promo.linkUrl || "/kemitraan"}` : "🪟 Pop-up Modal"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="space-y-1 text-xs max-w-[280px]">
+                                  <div className="font-extrabold text-brand-dark text-[11px] line-clamp-1">
+                                    {promo.details?.highlight || promo.title}
+                                  </div>
+                                  <div className="text-[10px] text-gray-500 line-clamp-1">
+                                    {promo.details?.description || promo.desc}
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                    <span className="text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200/60 px-2 py-0.5 rounded-md">
+                                      📋 {promo.details?.points?.length || 0} Poin S&amp;K
+                                    </span>
+                                    {promo.details?.showQrCode && (
+                                      <span className="text-[9px] font-bold bg-green-50 text-green-700 border border-green-200/60 px-2 py-0.5 rounded-md">
+                                        📱 QR Barcode Aktif
+                                      </span>
+                                    )}
+                                    {promo.details?.actionButtonText && (
+                                      <span className="text-[9px] font-semibold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-200">
+                                        CTA: {promo.details.actionButtonText}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <button
+                                  onClick={() => handleTogglePromoActive(promo)}
+                                  className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                                    promo.is_active
+                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                                      : "bg-gray-100 text-gray-400 border border-gray-200 hover:bg-gray-200"
+                                  }`}
+                                  title="Klik untuk ubah status aktif/nonaktif"
+                                >
+                                  {promo.is_active ? "Aktif" : "Nonaktif"}
+                                </button>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => handleMovePromo(index, "up")}
+                                    disabled={index === 0}
+                                    className="p-1.5 border border-gray-200 rounded-lg hover:border-brand-red/30 hover:text-brand-red disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer bg-white text-gray-400"
+                                    title="Pindah Ke Atas"
+                                  >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={() => handleMovePromo(index, "down")}
+                                    disabled={index === promos.length - 1}
+                                    className="p-1.5 border border-gray-200 rounded-lg hover:border-brand-red/30 hover:text-brand-red disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer bg-white text-gray-400"
+                                    title="Pindah Ke Bawah"
+                                  >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    onClick={() => openPromoEdit(promo)}
+                                    className="p-2 border border-gray-200 hover:border-brand-red/40 hover:text-brand-red rounded-xl transition-all cursor-pointer bg-white text-gray-500"
+                                    title="Edit Promo"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={() => askConfirmation("Hapus Promo", `Apakah Anda yakin ingin menghapus promo "${promo.title}"?`, () => handleDeletePromo(promo.id, promo.title))}
+                                    className="p-2 border border-gray-200 hover:border-brand-red/40 hover:text-brand-red rounded-xl transition-all cursor-pointer bg-white text-gray-500"
+                                    title="Hapus Promo"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === "testimonials" && (
               /* TESTIMONIALS TAB CONTENT */
               <div className="bg-white border border-gray-200/60 rounded-3xl overflow-hidden shadow-sm animate-fade-in">
@@ -3814,6 +4274,425 @@ export default function AdminDashboard() {
                     </>
                   ) : (
                     editingSlide ? "Simpan Perubahan" : "Tambah Slide"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+         PROMO CRUD MODAL ("DARI GAMBAR SAMPAI DALAM-DALAMNYA")
+         ========================================================================= */}
+      {isPromoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={() => !isSubmitting && setIsPromoModalOpen(false)}
+          ></div>
+
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-2xl w-full z-10 shadow-2xl border border-gray-100 relative max-h-[90vh] overflow-y-auto animate-fade-in space-y-6">
+            <div className="flex justify-between items-center pb-4 border-b border-gray-100">
+              <div>
+                <h3 className="font-black text-lg text-brand-dark">
+                  {editingPromo ? "Edit Promo & Pop-up Modal" : "Tambah Promo Baru"}
+                </h3>
+                <p className="text-[11px] text-gray-500">
+                  Konfigurasi tampilan kartu beranda dan seluruh isi pop-up modal (&quot;dalam-dalamnya&quot;).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPromoModalOpen(false)}
+                className="text-gray-400 hover:text-brand-dark p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handlePromoSubmit} className="space-y-6">
+              {/* SECTION 1: KARTU DEPAN (TAMPILAN BERANDA) */}
+              <div className="bg-gray-50/70 p-4 rounded-2xl border border-gray-200/80 space-y-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-brand-red block">
+                  1. Informasi Kartu (Tampilan Beranda)
+                </span>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Judul Promo *</label>
+                    <input
+                      type="text"
+                      required
+                      value={promoTitle}
+                      onChange={(e) => setPromoTitle(e.target.value)}
+                      placeholder="Contoh: FREE DELIVERY"
+                      className={`w-full px-4 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:border-brand-red bg-white ${
+                        formErrors.promoTitle ? "border-red-400 bg-red-50/30" : "border-gray-200"
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Badge Tag</label>
+                    <input
+                      type="text"
+                      value={promoBadge}
+                      onChange={(e) => setPromoBadge(e.target.value)}
+                      placeholder="Contoh: 🛵 PROMO DELIVERY"
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Deskripsi Singkat Kartu *</label>
+                  <input
+                    type="text"
+                    required
+                    value={promoDesc}
+                    onChange={(e) => setPromoDesc(e.target.value)}
+                    placeholder="Contoh: Nikmati Ayapi tanpa perlu keluar rumah"
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:border-brand-red bg-white ${
+                      formErrors.promoDesc ? "border-red-400 bg-red-50/30" : "border-gray-200"
+                    }`}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Teks Tombol Kartu</label>
+                    <input
+                      type="text"
+                      value={promoCtaText}
+                      onChange={(e) => setPromoCtaText(e.target.value)}
+                      placeholder="Default: See More"
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Tipe Aksi Tombol</label>
+                    <select
+                      value={promoActionType}
+                      onChange={(e) => setPromoActionType(e.target.value as "modal" | "link")}
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red bg-white"
+                    >
+                      <option value="modal">Buka Pop-up Modal Detail (Rekomendasi)</option>
+                      <option value="link">Direct Link URL Eksternal / Internal</option>
+                    </select>
+                  </div>
+                </div>
+
+                {promoActionType === "link" && (
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Link URL Tujuan</label>
+                    <input
+                      type="text"
+                      value={promoLinkUrl}
+                      onChange={(e) => setPromoLinkUrl(e.target.value)}
+                      placeholder="Contoh: /menu atau https://wa.me/..."
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red bg-white"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* SECTION 2: GAMBAR KARTU & BANNER MODAL */}
+              <div className="bg-gray-50/70 p-4 rounded-2xl border border-gray-200/80 space-y-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-brand-red block">
+                  2. Gambar Kartu &amp; Banner Pop-up
+                </span>
+
+                {/* Card Thumbnail */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Gambar Kartu (Thumbnail) *</label>
+                  <div className={`border-2 border-dashed rounded-2xl p-4 text-center transition-colors bg-white ${
+                    formErrors.promoImage ? "border-red-400 bg-red-50/30" : "border-gray-200 hover:border-brand-red/30"
+                  }`}>
+                    {promoImagePreview ? (
+                      <div className="relative w-full h-36 rounded-xl overflow-hidden bg-gray-100 mb-3">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={promoImagePreview} alt="Preview Kartu" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => { setPromoImagePreview(""); setPromoImageUrlInput(""); setPromoSelectedFile(null); }}
+                          className="absolute top-2 right-2 bg-white/90 text-gray-500 hover:text-brand-red rounded-lg p-1.5 transition-colors cursor-pointer"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ) : null}
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setPromoSelectedFile(file);
+                          setPromoImagePreview(URL.createObjectURL(file));
+                          setPromoImageUrlInput("");
+                          if (formErrors.promoImage) setFormErrors((prev) => ({ ...prev, promoImage: false }));
+                        }
+                      }}
+                      className="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-brand-red/10 file:text-brand-red hover:file:bg-brand-red/20 cursor-pointer w-full"
+                    />
+
+                    <div className="mt-2 text-center text-[10px] text-gray-400">Atau masukkan URL gambar langsung:</div>
+                    <input
+                      type="text"
+                      value={promoImageUrlInput}
+                      onChange={(e) => {
+                        setPromoImageUrlInput(e.target.value);
+                        setPromoImagePreview(e.target.value);
+                        setPromoSelectedFile(null);
+                        if (formErrors.promoImage) setFormErrors((prev) => ({ ...prev, promoImage: false }));
+                      }}
+                      placeholder="https://... atau /promos/..."
+                      className="mt-1 w-full px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red"
+                    />
+                  </div>
+                </div>
+
+                {/* Banner Image for Modal */}
+                <div className="pt-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      id="useSameBanner"
+                      checked={useSameImageForBanner}
+                      onChange={(e) => setUseSameImageForBanner(e.target.checked)}
+                      className="rounded text-brand-red focus:ring-brand-red cursor-pointer"
+                    />
+                    <label htmlFor="useSameBanner" className="text-xs font-bold text-gray-700 cursor-pointer">
+                      Gunakan gambar yang sama untuk Header Banner di dalam Pop-up Modal
+                    </label>
+                  </div>
+
+                  {!useSameImageForBanner && (
+                    <div className="border border-gray-200 rounded-2xl p-4 bg-white space-y-2">
+                      <label className="block text-[10px] font-bold uppercase text-gray-500">Gambar Header Banner Modal Khusus</label>
+                      {bannerImagePreview && (
+                        <div className="relative w-full h-28 rounded-xl overflow-hidden bg-gray-100 mb-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={bannerImagePreview} alt="Preview Banner" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setBannerSelectedFile(file);
+                            setBannerImagePreview(URL.createObjectURL(file));
+                            setBannerImageUrlInput("");
+                          }
+                        }}
+                        className="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer w-full"
+                      />
+                      <input
+                        type="text"
+                        value={bannerImageUrlInput}
+                        onChange={(e) => {
+                          setBannerImageUrlInput(e.target.value);
+                          setBannerImagePreview(e.target.value);
+                          setBannerSelectedFile(null);
+                        }}
+                        placeholder="Atau URL gambar banner..."
+                        className="w-full px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* SECTION 3: ISI DALAM-DALAMNYA (MODAL DETAIL) */}
+              <div className="bg-gray-50/70 p-4 rounded-2xl border border-gray-200/80 space-y-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-brand-red block">
+                  3. Konten &quot;Dalam-dalamnya&quot; (Pop-up Modal Detail)
+                </span>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Headline / Highlight Modal</label>
+                  <input
+                    type="text"
+                    value={promoHighlight}
+                    onChange={(e) => setPromoHighlight(e.target.value)}
+                    placeholder="Contoh: Gratis Ongkir Langsung ke Pintu Rumahmu!"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Deskripsi Lengkap Modal</label>
+                  <textarea
+                    rows={3}
+                    value={promoDetailsDescription}
+                    onChange={(e) => setPromoDetailsDescription(e.target.value)}
+                    placeholder="Tuliskan keterangan lengkap promo yang muncul di dalam modal pop-up..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red bg-white"
+                  />
+                </div>
+
+                {/* Dynamic Points Editor */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1.5">
+                    Syarat &amp; Ketentuan / Poin Keuntungan (Poin List)
+                  </label>
+                  <div className="space-y-2 mb-2">
+                    {promoPoints.map((pt, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-gray-200">
+                        <span className="text-xs text-brand-red font-black">•</span>
+                        <input
+                          type="text"
+                          value={pt}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPromoPoints((prev) => prev.map((item, i) => (i === idx ? val : item)));
+                          }}
+                          className="w-full text-xs font-medium focus:outline-none bg-transparent"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePromoPoint(idx)}
+                          className="text-gray-400 hover:text-brand-red p-1 cursor-pointer"
+                          title="Hapus baris poin"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newPointInput}
+                      onChange={(e) => setNewPointInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddPromoPoint();
+                        }
+                      }}
+                      placeholder="Ketik poin syarat/keuntungan lalu klik tombol Tambah..."
+                      className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium focus:outline-none focus:border-brand-red bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddPromoPoint}
+                      className="bg-brand-dark hover:bg-black text-white text-xs font-bold px-4 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      + Tambah Poin
+                    </button>
+                  </div>
+                </div>
+
+                {/* Modal CTA Button */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">Teks Tombol Aksi di Modal</label>
+                    <input
+                      type="text"
+                      value={promoActionButtonText}
+                      onChange={(e) => setPromoActionButtonText(e.target.value)}
+                      placeholder="Contoh: Pesan via WhatsApp Delivery"
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">URL Tujuan Tombol Aksi</label>
+                    <input
+                      type="text"
+                      value={promoActionButtonUrl}
+                      onChange={(e) => setPromoActionButtonUrl(e.target.value)}
+                      placeholder="Contoh: https://wa.me/628213444730?text=..."
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* QR Barcode Toggle */}
+                <div className="flex items-center justify-between p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl">
+                  <div>
+                    <span className="text-xs font-black text-amber-950 block">Tampilkan QR Barcode WhatsApp</span>
+                    <span className="text-[10px] text-amber-800">
+                      Otomatis menampilkan QR Barcode scan kamera HP di dalam modal (cocok untuk reservasi event/ulang tahun).
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPromoShowQrCode(!promoShowQrCode)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer shrink-0 ml-4 ${
+                      promoShowQrCode ? "bg-brand-red" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                        promoShowQrCode ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Toggle */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
+                <div>
+                  <span className="text-xs font-extrabold text-gray-900 block">Status Publikasi Promo</span>
+                  <span className="text-[10px] text-gray-400">Jika nonaktif, promo ini tidak akan muncul di halaman beranda.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPromoIsActive(!promoIsActive)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer shrink-0 ${
+                    promoIsActive ? "bg-emerald-500" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                      promoIsActive ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Form Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsPromoModalOpen(false)}
+                  disabled={isSubmitting}
+                  className="flex-1 py-3 bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 font-bold uppercase tracking-wider rounded-xl text-xs transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest py-3.5 rounded-xl text-xs transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      {isUploading ? "Mengunggah Gambar..." : "Menyimpan Promo..."}
+                    </>
+                  ) : editingPromo ? (
+                    "Simpan Perubahan Promo"
+                  ) : (
+                    "Tambah Promo Baru"
                   )}
                 </button>
               </div>
@@ -4865,27 +5744,62 @@ export default function AdminDashboard() {
                 />
               </div>
 
+              {/* Image Upload & Preview */}
               <div>
-                <label className="block text-[10px] font-extrabold uppercase text-gray-400 tracking-wider mb-1">URL Gambar / Upload Mockup</label>
-                <input
-                  type="text"
-                  value={imageUrlInput}
-                  onChange={(e) => setImageUrlInput(e.target.value)}
-                  placeholder="/express_booth_mockup.png"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red mb-2"
-                />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const compressed = await compressImage(file);
-                      setSelectedFile(compressed);
-                    }
-                  }}
-                  className="text-xs text-gray-500"
-                />
+                <label className="block text-[10px] font-extrabold uppercase text-gray-400 tracking-wider mb-1.5">
+                  Foto Mockup Paket *
+                </label>
+                <div className="space-y-3">
+                  {imagePreview && (
+                    <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 shadow-inner group">
+                      <img
+                        src={imagePreview}
+                        alt="Preview Paket"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImagePreview("");
+                          setSelectedFile(null);
+                          setImageUrlInput("");
+                        }}
+                        className="absolute top-2 right-2 bg-red-600/90 hover:bg-red-700 text-white rounded-lg p-1.5 transition-colors shadow cursor-pointer"
+                        title="Hapus Gambar"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase">Unggah File Foto</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-bold file:uppercase file:bg-brand-red/5 file:text-brand-red hover:file:bg-brand-red/10 cursor-pointer"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase">Atau Masukkan Link URL Mockup</span>
+                      <input
+                        type="text"
+                        value={imageUrlInput}
+                        onChange={(e) => {
+                          setImageUrlInput(e.target.value);
+                          setImagePreview(e.target.value);
+                          setSelectedFile(null);
+                        }}
+                        placeholder="/packages/booth-express-1.jpg atau https://..."
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-3 pt-4 border-t border-gray-100">
@@ -4898,10 +5812,10 @@ export default function AdminDashboard() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isUploading}
                   className="flex-1 bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest py-3.5 rounded-xl text-xs shadow-md hover:shadow-lg disabled:bg-gray-400 cursor-pointer"
                 >
-                  {isSubmitting ? "Menyimpan..." : "Simpan Paket"}
+                  {isUploading ? "Mengunggah Gambar..." : isSubmitting ? "Menyimpan..." : "Simpan Paket"}
                 </button>
               </div>
             </form>

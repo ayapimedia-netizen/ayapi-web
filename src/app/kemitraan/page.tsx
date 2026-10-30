@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -37,7 +37,6 @@ const defaultPackages: PackageDetail[] = [
     name: "Paket Express 1",
     priceText: "15 JUTA*",
     priceValue: 15000000,
-    originalPrice: "20 JUTA",
     dimensions: "120 x 80 x 200 cm",
     group: "express",
     description:
@@ -60,7 +59,6 @@ const defaultPackages: PackageDetail[] = [
     name: "Paket Express 2",
     priceText: "28 JUTA*",
     priceValue: 28000000,
-    originalPrice: "35 JUTA",
     dimensions: "200 x 190 x 220 cm",
     group: "express",
     description:
@@ -83,7 +81,6 @@ const defaultPackages: PackageDetail[] = [
     name: "Paket Mini Resto",
     priceText: "135 JUTA*",
     priceValue: 135000000,
-    originalPrice: "150 JUTA",
     dimensions: "5 x 7 METER",
     group: "resto",
     description:
@@ -108,23 +105,25 @@ const defaultPackages: PackageDetail[] = [
     name: "Paket Resto",
     priceText: "180 JUTA*",
     priceValue: 180000000,
-    originalPrice: "200 JUTA",
     dimensions: "6 x 8 METER",
     group: "resto",
     description:
-      "Resto premium & full experience. Ukuran: 6 x 8 METER. Konsep flagship resto dengan kapasitas maksimal, interior mewah, dan pengalaman kuliner terlengkap.",
+      "Resto premium & full experience. Ukuran: 6 x 8 METER. Konsep flagship resto dengan kapasitas 30-36 orang, area dine in & take away terpisah, serta dapur belakang yang efisien.",
     badge: "Flagship Resto",
     image: "/packages/resto-outlet-3.jpg",
     inclusions: [
       "Desain Interior & Renovasi Full Experience (6 x 8 M)",
-      "Kapasitas Dine-in Luas & Nyaman (30+ Kursi)",
+      "Kapasitas Dine-in Nyaman (30 - 36 Orang)",
+      "Area Order & Take Away Terpisah",
+      "Dapur di Bagian Belakang & Peralatan Lengkap",
+      "Desain Modern, Terang & Identitas Ayapi Kuat",
+      "Cocok untuk Ruko, Perumahan, & Area Ramai",
       "Peralatan Dapur Premium Kapasitas Maksimal",
-      "Paket Bahan Baku Terlengkap",
+      "Paket Bahan Baku & Bumbu Terlengkap",
       "Sistem POS Kasir & Pelatihan Komprehensif",
       "Media Promosi Lengkap & Branding Eksklusif",
       "Terdaftar di Platform Pesan Antar Online",
-      "Pendampingan operasional",
-      "Pendampingan Grand Opening Tim Pusat",
+      "Pendampingan Grand Opening Tim Pusat & Operasional",
       "Kampanye Marketing & Influencer Launching",
     ],
   },
@@ -301,6 +300,9 @@ export default function Kemitraan() {
   const [downloadPhone, setDownloadPhone] = useState("");
   const [isDownloadSubmitted, setIsDownloadSubmitted] = useState(false);
 
+  // Lightbox Image Preview State
+  const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
+
   const handleSelectPackage = (pkgKey: string) => {
     setSelectedPackage(pkgKey);
     if (pkgKey.includes("express-1") || pkgKey === "express-1") {
@@ -393,21 +395,59 @@ export default function Kemitraan() {
     setIsDownloadSubmitted(true);
   };
 
-  // Financial Constants
-  const activePackagesList = defaultPackages;
+  // Financial Constants & Dynamic Packages
+  const activePackagesList: PackageDetail[] = useMemo(() => {
+    if (!pkgList || pkgList.length === 0) return defaultPackages;
+
+    return pkgList.map((dbPkg) => {
+      const matchingDefault = defaultPackages.find(
+        (def) =>
+          def.package_key === dbPkg.package_key ||
+          def.id === dbPkg.id ||
+          def.id === dbPkg.package_key
+      );
+
+      const isResto =
+        dbPkg.package_key?.toLowerCase().includes("resto") ||
+        dbPkg.name?.toLowerCase().includes("resto") ||
+        (matchingDefault && matchingDefault.group === "resto");
+
+      return {
+        id: dbPkg.id || dbPkg.package_key,
+        package_key: dbPkg.package_key,
+        name: dbPkg.name,
+        priceText: dbPkg.price_text,
+        priceValue: dbPkg.price_value,
+        originalPrice: matchingDefault?.originalPrice,
+        dimensions: matchingDefault?.dimensions,
+        group: isResto ? "resto" : "express",
+        description: dbPkg.description,
+        badge: dbPkg.badge,
+        image: dbPkg.image || matchingDefault?.image || "/packages/booth-express-1.jpg",
+        inclusions:
+          Array.isArray(dbPkg.inclusions) && dbPkg.inclusions.length > 0
+            ? dbPkg.inclusions
+            : matchingDefault?.inclusions || [],
+      };
+    });
+  }, [pkgList]);
 
   const activeSelectedPkgObj =
-    activePackagesList.find((p) => (p.package_key || p.id) === selectedPackage) || activePackagesList[0];
+    activePackagesList.find(
+      (p) =>
+        (p.package_key && p.package_key === selectedPackage) ||
+        p.id === selectedPackage
+    ) || activePackagesList[0];
 
   const initialInvestment = activeSelectedPkgObj ? activeSelectedPkgObj.priceValue : 15000000;
 
   const fixedOpsCost = isCustomOps
     ? customRent + customSalaries + customUtilities
-    : selectedPackage.includes("express-1")
+    : selectedPackage.includes("express-1") || selectedPackage === "express"
       ? 4900000
       : selectedPackage.includes("express-2")
         ? 7100000
-        : selectedPackage.includes("resto-2") || selectedPackage.toLowerCase().includes("mini")
+        : selectedPackage.includes("resto-2") || selectedPackage.toLowerCase().includes("mini") || selectedPackage.includes("resto-1")
           ? 20000000
           : 32000000;
 
@@ -578,7 +618,7 @@ export default function Kemitraan() {
           <div className="flex flex-wrap justify-center gap-8 lg:gap-10">
             {filteredPackages.map((pkg) => {
               const pKey = pkg.package_key || pkg.id;
-              const isSelected = selectedPackage === pKey;
+              const isSelected = selectedPackage === pKey || selectedPackage === pkg.id;
 
               return (
                 <div
@@ -599,16 +639,27 @@ export default function Kemitraan() {
                   )}
 
                   {/* Mockup Image */}
-                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100 border-b border-gray-100 shrink-0">
+                  <div
+                    onClick={() => setPreviewImage({ src: pkg.image, title: pkg.name })}
+                    className="relative aspect-[3/2] w-full overflow-hidden bg-zinc-950 border-b border-gray-100 shrink-0 cursor-pointer group/img"
+                    title="Klik untuk melihat denah & visual lengkap"
+                  >
                     <Image
                       src={pkg.image}
                       alt={pkg.name}
                       fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      sizes="(max-w-768px) 100vw, (max-w-1200px) 50vw, 33vw"
+                      unoptimized={pkg.image?.startsWith("http")}
+                      className="object-cover group-hover/img:scale-105 transition-transform duration-500"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       priority={pKey === "express-1"}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60 group-hover/img:opacity-30 transition-opacity pointer-events-none"></div>
+                    <div className="absolute bottom-2.5 right-2.5 bg-black/75 hover:bg-black/95 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-sm transition-all group-hover/img:scale-105 pointer-events-none">
+                      <svg className="w-3.5 h-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                      </svg>
+                      <span>Lihat Denah</span>
+                    </div>
                   </div>
 
                   {/* Card Content */}
@@ -619,14 +670,8 @@ export default function Kemitraan() {
                           {pkg.name}
                         </h3>
 
-                        {/* Pricing Block with Strikethrough */}
+                        {/* Pricing Block */}
                         <div className="mt-2">
-                          {pkg.originalPrice && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-400 line-through font-bold">{pkg.originalPrice}</span>
-                              <span className="text-[10px] bg-red-100 text-red-700 font-extrabold px-2 py-0.5 rounded-full uppercase">PROMO SPESIAL</span>
-                            </div>
-                          )}
                           <div className="flex items-baseline text-brand-red mt-0.5">
                             <span className="text-3xl font-black tracking-tight">{pkg.priceText.replace("*", "")}</span>
                             <span className="text-xs font-semibold text-gray-400 ml-1.5">* Investasi</span>
@@ -796,19 +841,24 @@ export default function Kemitraan() {
                   Pilih Paket Kemitraan:
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200/40">
-                  {activePackagesList.map((pkg) => (
-                    <button
-                      key={pkg.id}
-                      type="button"
-                      onClick={() => handleSelectPackage(pkg.id)}
-                      className={`py-2 px-2 rounded-xl text-center font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer ${selectedPackage === pkg.id
-                          ? "bg-brand-red text-white shadow-sm"
-                          : "text-gray-500 hover:text-brand-dark hover:bg-gray-200/50"
+                  {activePackagesList.map((pkg) => {
+                    const pKey = pkg.package_key || pkg.id;
+                    const isBtnSelected = selectedPackage === pkg.id || selectedPackage === pKey;
+                    return (
+                      <button
+                        key={pkg.id}
+                        type="button"
+                        onClick={() => handleSelectPackage(pKey)}
+                        className={`py-2 px-2 rounded-xl text-center font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer ${
+                          isBtnSelected
+                            ? "bg-brand-red text-white shadow-sm"
+                            : "text-gray-500 hover:text-brand-dark hover:bg-gray-200/50"
                         }`}
-                    >
-                      {pkg.name.replace("Paket ", "")}
-                    </button>
-                  ))}
+                      >
+                        {pkg.name.replace("Paket ", "")}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1382,6 +1432,62 @@ export default function Kemitraan() {
                 </form>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* IMAGE PREVIEW LIGHTBOX MODAL */}
+      {previewImage && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative bg-white rounded-2xl overflow-hidden max-w-4xl w-full shadow-2xl border border-white/20 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-brand-dark text-white border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-brand-red animate-pulse"></span>
+                <span className="font-bold text-sm tracking-wide uppercase">{previewImage.title} — Visual & Layout Denah</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer text-sm font-bold"
+                aria-label="Tutup preview"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Image display */}
+            <div className="relative w-full aspect-[3/2] bg-neutral-950 flex items-center justify-center overflow-hidden">
+              <Image
+                src={previewImage.src}
+                alt={previewImage.title}
+                fill
+                unoptimized={previewImage.src?.startsWith("http")}
+                className="object-contain"
+                sizes="(max-width: 1024px) 100vw, 90vw"
+                priority
+              />
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 bg-gray-50 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 border-t border-gray-100">
+              <span>💡 Visual fasad 3D, area dine in, area kasir, dan denah arsitektural outlet Ayapi.</span>
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="px-4 py-1.5 bg-brand-red hover:bg-[#a01c1c] text-white font-bold rounded-lg text-xs transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}
