@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 import { getMenuItems, getBranches, getHeroSlides, getPromos, MenuItem, Branch, HeroSlide } from "@/app/actions";
 import { defaultPromoItems, PromoItem } from "@/lib/promo-defaults";
