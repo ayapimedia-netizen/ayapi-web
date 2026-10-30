@@ -1,10 +1,16 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { supabase, supabaseAdmin } from "@/lib/supabase";
 import fs from "fs/promises";
 import path from "path";
-import { getSecureSessionTokenWithTimestamp, isSessionValid } from "@/lib/auth-helper";
+import {
+  createAdminSessionToken,
+  getCredentialFingerprint,
+  hashAdminPassword,
+  isSessionValid,
+} from "@/lib/auth-helper";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
 
@@ -33,14 +39,6 @@ export type Category = {
   key: string;
   name: string;
   created_at?: string;
-};
-
-export type GalleryItem = {
-  id?: string;
-  title: string;
-  image: string;
-  category: string;
-  deleted_at?: string;
 };
 
 export type Branch = {
@@ -366,45 +364,6 @@ const fallbackMenuItems: MenuItem[] = [
   },
 ];
 
-const fallbackGalleryItems: GalleryItem[] = [
-  {
-    id: "gb-1",
-    title: "Proses Pembakaran Ayam",
-    image: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=600&q=80",
-    category: "Dapur",
-  },
-  {
-    id: "gb-2",
-    title: "Kerenyahan Khas Ayapi",
-    image: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=600&q=80",
-    category: "Menu",
-  },
-  {
-    id: "gb-3",
-    title: "Bahan Rempah Segar Pilihan",
-    image: "https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&w=600&q=80",
-    category: "Bahan Baku",
-  },
-  {
-    id: "gb-4",
-    title: "Paket Krisbar Madu Lengkap",
-    image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80",
-    category: "Menu",
-  },
-  {
-    id: "gb-5",
-    title: "Ayam Bakar Madu Smoky",
-    image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80",
-    category: "Menu",
-  },
-  {
-    id: "gb-6",
-    title: "Pelanggan Setia Ayapi",
-    image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=600&q=80",
-    category: "Outlet",
-  },
-];
-
 // Helper: Check if a string is a valid PostgreSQL UUID
 const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 function isValidUuid(id: string | null | undefined): boolean {
@@ -420,10 +379,83 @@ function isSupabaseConfigured() {
 }
 
 /* =========================================================================
-   1. ADMIN AUTHENTICATION ACTIONS
+   1. ADMIN AUTHENTICATION & SECURITY CREDENTIALS ACTIONS
    ========================================================================= */
 
-// In-memory rate limiting for login attempts
+export type AdminSecurityInfo = {
+  username: string;
+  isCustomUsername: boolean;
+  isCustomPassword: boolean;
+  updatedAt: string | null;
+};
+
+type ActiveAdminCredentials = {
+  username: string;
+  passwordHash: string;
+  isCustomUsername: boolean;
+  isCustomPassword: boolean;
+  updatedAt: string | null;
+};
+
+const getActiveAdminCredentials = cache(async (): Promise<ActiveAdminCredentials> => {
+  const defaultUsername = (process.env.ADMIN_USERNAME || "admin").trim();
+  const defaultPassword = process.env.ADMIN_PASSWORD || "m1n66A61lAA";
+  const defaultPasswordHash = hashAdminPassword(defaultPassword);
+
+  if (!isSupabaseConfigured()) {
+    return {
+      username: defaultUsername,
+      passwordHash: defaultPasswordHash,
+      isCustomUsername: false,
+      isCustomPassword: false,
+      updatedAt: null,
+    };
+  }
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("settings")
+      .select("key, value")
+      .in("key", ["__admin_username", "__admin_password_hash", "__admin_updated_at"]);
+
+    if (error || !data || data.length === 0) {
+      return {
+        username: defaultUsername,
+        passwordHash: defaultPasswordHash,
+        isCustomUsername: false,
+        isCustomPassword: false,
+        updatedAt: null,
+      };
+    }
+
+    const map: Record<string, string> = {};
+    data.forEach((row: { key: string; value: string }) => {
+      map[row.key] = row.value;
+    });
+
+    const customUser = map["__admin_username"]?.trim();
+    const customPassHash = map["__admin_password_hash"]?.trim();
+
+    return {
+      username: customUser || defaultUsername,
+      passwordHash: customPassHash || defaultPasswordHash,
+      isCustomUsername: Boolean(customUser),
+      isCustomPassword: Boolean(customPassHash),
+      updatedAt: map["__admin_updated_at"] || null,
+    };
+  } catch (err) {
+    console.error("Error fetching admin credentials from Supabase:", err);
+    return {
+      username: defaultUsername,
+      passwordHash: defaultPasswordHash,
+      isCustomUsername: false,
+      isCustomPassword: false,
+      updatedAt: null,
+    };
+  }
+});
+
+// In-memory rate limiting for login & credential change attempts
 interface LoginAttemptRecord {
   count: number;
   lockedUntil: number;
@@ -433,11 +465,12 @@ const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
 export async function loginAdmin(formData: FormData) {
-  const usernameInput = (formData.get("username") as string || "").trim();
-  const passwordInput = (formData.get("password") as string || "");
+  const usernameInput = ((formData.get("username") as string) || "").trim();
+  const rawPasswordInput = (formData.get("password") as string) || "";
+  const trimmedPasswordInput = rawPasswordInput.trim();
 
   // Basic length & type validation
-  if (!usernameInput || !passwordInput || usernameInput.length > 100 || passwordInput.length > 200) {
+  if (!usernameInput || !trimmedPasswordInput || usernameInput.length > 100 || rawPasswordInput.length > 200) {
     return { success: false, error: "Input username atau password tidak valid." };
   }
 
@@ -455,17 +488,21 @@ export async function loginAdmin(formData: FormData) {
     };
   }
 
-  const adminUser = process.env.ADMIN_USERNAME || "admin";
-  const adminPass = process.env.ADMIN_PASSWORD || "m1n66A61lAA";
+  const activeCreds = await getActiveAdminCredentials();
+  const usernameMatches = usernameInput.toLowerCase() === activeCreds.username.toLowerCase();
+  const passwordMatches =
+    hashAdminPassword(rawPasswordInput) === activeCreds.passwordHash ||
+    hashAdminPassword(trimmedPasswordInput) === activeCreds.passwordHash;
 
-  if (usernameInput === adminUser && passwordInput === adminPass) {
+  if (usernameMatches && passwordMatches) {
     // Reset rate limiter on successful authentication
     loginAttemptsMap.delete(rateLimitKey);
 
     const cookieStore = await cookies();
     const timestamp = Date.now();
-    const hash = getSecureSessionTokenWithTimestamp(timestamp);
-    const token = `${hash}:${timestamp}`;
+    const credFingerprint = getCredentialFingerprint(activeCreds.username, activeCreds.passwordHash);
+    const token = createAdminSessionToken(timestamp, credFingerprint);
+
     cookieStore.set("admin_session", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -473,7 +510,7 @@ export async function loginAdmin(formData: FormData) {
       path: "/",
       sameSite: "lax",
     });
-    logger.auth("LOGIN", `Admin user '${usernameInput}' logged in successfully`);
+    logger.auth("LOGIN", `Admin user '${activeCreds.username}' logged in successfully`);
     return { success: true };
   }
 
@@ -499,7 +536,7 @@ export async function loginAdmin(formData: FormData) {
 
   return {
     success: false,
-    error: `Username atau password salah! (${MAX_FAILED_ATTEMPTS - currentAttempts} percobaan tersisa)`
+    error: `Username atau password salah! (${MAX_FAILED_ATTEMPTS - currentAttempts} percobaan tersisa)`,
   };
 }
 
@@ -512,72 +549,269 @@ export async function logoutAdmin() {
 
 export async function checkAdminSession() {
   const cookieStore = await cookies();
-  const session = cookieStore.get("admin_session");
-  return isSessionValid(session?.value);
+  const sessionValue = cookieStore.get("admin_session")?.value;
+  if (!isSessionValid(sessionValue)) return false;
+
+  // If token carries a credential fingerprint (3-part token), verify it matches active credentials
+  if (sessionValue && sessionValue.split(":").length === 3) {
+    const activeCreds = await getActiveAdminCredentials();
+    const expectedFp = getCredentialFingerprint(activeCreds.username, activeCreds.passwordHash);
+    return isSessionValid(sessionValue, expectedFp);
+  }
+
+  return true;
 }
 
-// Lazy garbage collection for soft deleted items
+export async function getAdminSecurityInfo(): Promise<AdminSecurityInfo> {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  const active = await getActiveAdminCredentials();
+  return {
+    username: active.username,
+    isCustomUsername: active.isCustomUsername,
+    isCustomPassword: active.isCustomPassword,
+    updatedAt: active.updatedAt,
+  };
+}
+
+export async function updateAdminCredentials(payload: {
+  currentPassword: string;
+  newUsername?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+}): Promise<{
+  success: boolean;
+  error?: string;
+  message?: string;
+  securityInfo?: AdminSecurityInfo;
+}> {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) {
+    return { success: false, error: "Sesi Anda telah berakhir. Silakan login kembali." };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "Database Supabase belum terkonfigurasi." };
+  }
+
+  const rateLimitKey = "change_cred_admin";
+  const now = Date.now();
+  const record = loginAttemptsMap.get(rateLimitKey);
+
+  if (record && record.lockedUntil > now) {
+    const remainingMinutes = Math.ceil((record.lockedUntil - now) / (60 * 1000));
+    return {
+      success: false,
+      error: `Terlalu banyak percobaan salah saat memverifikasi password lama. Fitur dikunci sementara selama ${remainingMinutes} menit.`,
+    };
+  }
+
+  const rawCurrent = payload.currentPassword || "";
+  const trimmedCurrent = rawCurrent.trim();
+  if (!trimmedCurrent) {
+    return { success: false, error: "Password saat ini wajib diisi untuk verifikasi keamanan." };
+  }
+
+  const activeCreds = await getActiveAdminCredentials();
+  const isCurrentValid =
+    hashAdminPassword(rawCurrent) === activeCreds.passwordHash ||
+    hashAdminPassword(trimmedCurrent) === activeCreds.passwordHash;
+
+  if (!isCurrentValid) {
+    const currentAttempts = (record && record.lockedUntil <= now ? 0 : record?.count || 0) + 1;
+    const isLocked = currentAttempts >= MAX_FAILED_ATTEMPTS;
+    loginAttemptsMap.set(rateLimitKey, {
+      count: currentAttempts,
+      lockedUntil: isLocked ? now + LOCKOUT_DURATION_MS : 0,
+    });
+    logger.auth("DENIED", `Failed current-password check during credential update (${currentAttempts}/${MAX_FAILED_ATTEMPTS})`);
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    if (isLocked) {
+      return {
+        success: false,
+        error: "Terlalu banyak percobaan gagal! Fitur ganti password dikunci selama 15 menit demi keamanan.",
+      };
+    }
+
+    return {
+      success: false,
+      error: `Password saat ini salah! (${MAX_FAILED_ATTEMPTS - currentAttempts} percobaan tersisa)`,
+    };
+  }
+
+  // Current password verified -> clear rate limit
+  loginAttemptsMap.delete(rateLimitKey);
+
+  const requestedUsername = (payload.newUsername ?? activeCreds.username).trim();
+  const isUsernameChanged = requestedUsername.toLowerCase() !== activeCreds.username.toLowerCase();
+
+  const cleanNewPassword = (payload.newPassword || "").trim();
+  const cleanConfirmPassword = (payload.confirmPassword || "").trim();
+  const isPasswordProvided = cleanNewPassword.length > 0 || cleanConfirmPassword.length > 0;
+
+  if (!isUsernameChanged && !isPasswordProvided) {
+    return {
+      success: false,
+      error: "Tidak ada perubahan yang dimasukkan. Silakan isi username baru atau password baru.",
+    };
+  }
+
+  // Validate new username
+  if (requestedUsername.length < 3 || requestedUsername.length > 32) {
+    return {
+      success: false,
+      error: "Username admin harus terdiri dari 3 hingga 32 karakter.",
+    };
+  }
+  if (!/^[a-zA-Z0-9._-]+$/.test(requestedUsername)) {
+    return {
+      success: false,
+      error: "Username hanya boleh berisi huruf, angka, titik (.), garis bawah (_), atau strip (-) tanpa spasi.",
+    };
+  }
+
+  let nextPasswordHash = activeCreds.passwordHash;
+
+  // Validate new password if provided
+  if (isPasswordProvided) {
+    if (cleanNewPassword.length < 8) {
+      return {
+        success: false,
+        error: "Password baru minimal harus terdiri dari 8 karakter.",
+      };
+    }
+    if (cleanNewPassword.length > 100) {
+      return {
+        success: false,
+        error: "Password baru maksimal 100 karakter.",
+      };
+    }
+    if (!/[a-zA-Z]/.test(cleanNewPassword) || !/[0-9]/.test(cleanNewPassword)) {
+      return {
+        success: false,
+        error: "Password baru wajib mengandung kombinasi huruf dan angka agar tidak mudah ditebak.",
+      };
+    }
+    if (cleanNewPassword.toLowerCase() === requestedUsername.toLowerCase()) {
+      return {
+        success: false,
+        error: "Password baru tidak boleh sama dengan username admin.",
+      };
+    }
+    if (cleanNewPassword !== cleanConfirmPassword) {
+      return {
+        success: false,
+        error: "Konfirmasi password baru tidak cocok! Pastikan kedua kolom password baru sama persis.",
+      };
+    }
+
+    const candidateHash = hashAdminPassword(cleanNewPassword);
+    if (candidateHash === activeCreds.passwordHash) {
+      return {
+        success: false,
+        error: "Password baru tidak boleh sama persis dengan password saat ini.",
+      };
+    }
+
+    nextPasswordHash = candidateHash;
+  }
+
+  const updatedAtIso = new Date().toISOString();
+  const rowsToUpsert: { key: string; value: string }[] = [
+    { key: "__admin_username", value: requestedUsername },
+    { key: "__admin_updated_at", value: updatedAtIso },
+  ];
+
+  if (isPasswordProvided) {
+    rowsToUpsert.push({ key: "__admin_password_hash", value: nextPasswordHash });
+  }
+
+  const { error: dbErr } = await supabaseAdmin.from("settings").upsert(rowsToUpsert);
+  if (dbErr) {
+    console.error("Error updating admin credentials in Supabase:", dbErr);
+    return {
+      success: false,
+      error: "Gagal menyimpan kredensial baru ke database. Silakan coba lagi.",
+    };
+  }
+
+  // Immediately rotate session cookie so current admin stays logged in while old sessions expire
+  const cookieStore = await cookies();
+  const timestamp = Date.now();
+  const newFingerprint = getCredentialFingerprint(requestedUsername, nextPasswordHash);
+  const newToken = createAdminSessionToken(timestamp, newFingerprint);
+
+  cookieStore.set("admin_session", newToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24,
+    path: "/",
+    sameSite: "lax",
+  });
+
+  logger.auth(
+    "SECURITY",
+    `Admin credentials updated (usernameChanged=${isUsernameChanged}, passwordChanged=${isPasswordProvided})`
+  );
+
+  revalidatePath("/admin");
+
+  return {
+    success: true,
+    message:
+      isUsernameChanged && isPasswordProvided
+        ? "Username dan Password Admin berhasil diperbarui! Sesi Anda telah disinkronkan otomatis."
+        : isPasswordProvided
+        ? "Password Admin berhasil diperbarui! Sesi Anda telah disinkronkan otomatis."
+        : "Username Admin berhasil diperbarui! Sesi Anda telah disinkronkan otomatis.",
+    securityInfo: {
+      username: requestedUsername,
+      isCustomUsername: true,
+      isCustomPassword: isPasswordProvided || activeCreds.isCustomPassword,
+      updatedAt: updatedAtIso,
+    },
+  };
+}
+
+// Lazy garbage collection for soft deleted items (7-day retention)
 export async function purgeExpiredDeletedItems() {
   if (!isSupabaseConfigured()) return;
 
-  // 2 minutes retention
-  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   try {
-    // 1. Menu items
-    const { data: menus } = await supabaseAdmin
-      .from("menu_items")
-      .select("id, image")
-      .lt("deleted_at", twoMinutesAgo);
-    if (menus && menus.length > 0) {
-      for (const m of menus) {
-        if (m.image) await deleteStorageFile(m.image);
-      }
-      await supabaseAdmin.from("menu_items").delete().in("id", menus.map(i => i.id));
+    const [{ data: menus }, { data: slides }, { data: pkgs }] = await Promise.all([
+      supabaseAdmin.from("menu_items").select("id, image").lt("deleted_at", sevenDaysAgo),
+      supabaseAdmin.from("hero_slides").select("id, image").lt("deleted_at", sevenDaysAgo),
+      supabaseAdmin.from("partnership_packages").select("id, image").lt("deleted_at", sevenDaysAgo),
+    ]);
+
+    const filesToDelete = [
+      ...(menus || []).map((m) => m.image),
+      ...(slides || []).map((s) => s.image),
+      ...(pkgs || []).map((p) => p.image),
+    ].filter(Boolean) as string[];
+
+    if (filesToDelete.length > 0) {
+      await Promise.all(filesToDelete.map((img) => deleteStorageFile(img)));
     }
 
-    // 2. Gallery items
-    const { data: gallery } = await supabaseAdmin
-      .from("gallery_items")
-      .select("id, image")
-      .lt("deleted_at", twoMinutesAgo);
-    if (gallery && gallery.length > 0) {
-      for (const g of gallery) {
-        if (g.image) await deleteStorageFile(g.image);
-      }
-      await supabaseAdmin.from("gallery_items").delete().in("id", gallery.map(i => i.id));
-    }
-
-    // 3. Hero slides
-    const { data: slides } = await supabaseAdmin
-      .from("hero_slides")
-      .select("id, image")
-      .lt("deleted_at", twoMinutesAgo);
-    if (slides && slides.length > 0) {
-      for (const s of slides) {
-        if (s.image) await deleteStorageFile(s.image);
-      }
-      await supabaseAdmin.from("hero_slides").delete().in("id", slides.map(i => i.id));
-    }
-
-    // 4. Partnership packages
-    const { data: pkgs } = await supabaseAdmin
-      .from("partnership_packages")
-      .select("id, image")
-      .lt("deleted_at", twoMinutesAgo);
-    if (pkgs && pkgs.length > 0) {
-      for (const p of pkgs) {
-        if (p.image) await deleteStorageFile(p.image);
-      }
-      await supabaseAdmin.from("partnership_packages").delete().in("id", pkgs.map(i => i.id));
-    }
-
-    // 5. Branches, Links, Testimonials, FAQs
     await Promise.all([
-      supabaseAdmin.from("branches").delete().lt("deleted_at", twoMinutesAgo),
-      supabaseAdmin.from("links").delete().lt("deleted_at", twoMinutesAgo),
-      supabaseAdmin.from("testimonials").delete().lt("deleted_at", twoMinutesAgo),
-      supabaseAdmin.from("faqs").delete().lt("deleted_at", twoMinutesAgo),
+      menus && menus.length > 0
+        ? supabaseAdmin.from("menu_items").delete().in("id", menus.map((i) => i.id))
+        : Promise.resolve(),
+      slides && slides.length > 0
+        ? supabaseAdmin.from("hero_slides").delete().in("id", slides.map((i) => i.id))
+        : Promise.resolve(),
+      pkgs && pkgs.length > 0
+        ? supabaseAdmin.from("partnership_packages").delete().in("id", pkgs.map((i) => i.id))
+        : Promise.resolve(),
+      supabaseAdmin.from("branches").delete().lt("deleted_at", sevenDaysAgo),
+      supabaseAdmin.from("links").delete().lt("deleted_at", sevenDaysAgo),
+      supabaseAdmin.from("testimonials").delete().lt("deleted_at", sevenDaysAgo),
+      supabaseAdmin.from("faqs").delete().lt("deleted_at", sevenDaysAgo),
     ]);
   } catch (err) {
     console.error("Gagal membersihkan item kedaluwarsa:", err);
@@ -609,7 +843,7 @@ async function deleteStorageFile(imageUrl: string) {
    2. MENU ITEMS CRUD ACTIONS
    ========================================================================= */
 
-export async function getMenuItems(): Promise<MenuItem[]> {
+const cachedGetMenuItems = cache(async (): Promise<MenuItem[]> => {
   if (!isSupabaseConfigured()) {
     console.warn("Supabase not configured. Using fallback menu items.");
     return fallbackMenuItems;
@@ -628,6 +862,10 @@ export async function getMenuItems(): Promise<MenuItem[]> {
     console.error("Error fetching menu items from Supabase:", err);
     return fallbackMenuItems;
   }
+});
+
+export async function getMenuItems(): Promise<MenuItem[]> {
+  return cachedGetMenuItems();
 }
 
 export async function addMenuItem(item: Omit<MenuItem, "id">) {
@@ -742,138 +980,6 @@ export async function restoreMenuItem(id: string) {
 }
 
 /* =========================================================================
-   3. GALLERY ITEMS CRUD ACTIONS
-   ========================================================================= */
-
-export async function getGalleryItems(): Promise<GalleryItem[]> {
-  if (!isSupabaseConfigured()) {
-    console.warn("Supabase not configured. Using fallback gallery items.");
-    return fallbackGalleryItems;
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from("gallery_items")
-      .select("*")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: true });
-
-    if (error) throw error;
-    return data || [];
-  } catch (err) {
-    console.error("Error fetching gallery items from Supabase:", err);
-    return fallbackGalleryItems;
-  }
-}
-
-export async function addGalleryItem(item: Omit<GalleryItem, "id">) {
-  const isAdmin = await checkAdminSession();
-  if (!isAdmin) throw new Error("Unauthorized");
-
-  if (!isSupabaseConfigured()) {
-    throw new Error("Supabase is not configured yet. Please set environment variables.");
-  }
-
-  const { data, error } = await supabaseAdmin
-    .from("gallery_items")
-    .insert([item])
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error inserting gallery item:", error);
-    throw error;
-  }
-
-  revalidatePath("/gallery");
-  return data;
-}
-
-export async function updateGalleryItem(id: string, item: Omit<GalleryItem, "id">) {
-  const isAdmin = await checkAdminSession();
-  if (!isAdmin) throw new Error("Unauthorized");
-
-  if (!isSupabaseConfigured()) {
-    throw new Error("Supabase is not configured yet. Please set environment variables.");
-  }
-
-  // Fetch the old item first to get its image URL
-  const { data: oldItem } = await supabaseAdmin
-    .from("gallery_items")
-    .select("image")
-    .eq("id", id)
-    .single();
-
-  if (oldItem && oldItem.image && oldItem.image !== item.image) {
-    await deleteStorageFile(oldItem.image);
-  }
-
-  const { data, error } = await supabaseAdmin
-    .from("gallery_items")
-    .update(item)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error updating gallery item:", error);
-    throw error;
-  }
-
-  revalidatePath("/gallery");
-  return data;
-}
-
-export async function deleteGalleryItem(id: string) {
-  const isAdmin = await checkAdminSession();
-  if (!isAdmin) throw new Error("Unauthorized");
-
-  if (!isSupabaseConfigured()) {
-    throw new Error("Supabase is not configured yet. Please set environment variables.");
-  }
-
-  // Soft delete: update deleted_at
-  const { data, error } = await supabaseAdmin
-    .from("gallery_items")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error soft deleting gallery item:", error);
-    throw error;
-  }
-
-  revalidatePath("/gallery");
-  return { success: true, data };
-}
-
-export async function restoreGalleryItem(id: string) {
-  const isAdmin = await checkAdminSession();
-  if (!isAdmin) throw new Error("Unauthorized");
-
-  if (!isSupabaseConfigured()) {
-    throw new Error("Supabase is not configured yet.");
-  }
-
-  const { data, error } = await supabaseAdmin
-    .from("gallery_items")
-    .update({ deleted_at: null })
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Error restoring gallery item:", error);
-    throw error;
-  }
-
-  revalidatePath("/gallery");
-  return data;
-}
-
-/* =========================================================================
    4. IMAGE UPLOAD ACTION (SUPABASE STORAGE WITH LOCAL FALLBACK)
    ========================================================================= */
 
@@ -974,7 +1080,7 @@ const fallbackBranches: Branch[] = [
   },
 ];
 
-export async function getBranches(): Promise<Branch[]> {
+const cachedGetBranches = cache(async (): Promise<Branch[]> => {
   if (!isSupabaseConfigured()) {
     return fallbackBranches;
   }
@@ -992,6 +1098,10 @@ export async function getBranches(): Promise<Branch[]> {
     console.error("Error fetching branches from Supabase:", err);
     return fallbackBranches;
   }
+});
+
+export async function getBranches(): Promise<Branch[]> {
+  return cachedGetBranches();
 }
 
 export async function addBranch(branch: Omit<Branch, "id">) {
@@ -1223,7 +1333,7 @@ const fallbackCategories: Category[] = [
   { key: "sambal", name: "Pilihan Sambal" },
 ];
 
-export async function getCategories(): Promise<Category[]> {
+const cachedGetCategories = cache(async (): Promise<Category[]> => {
   if (!isSupabaseConfigured()) {
     return fallbackCategories;
   }
@@ -1240,6 +1350,10 @@ export async function getCategories(): Promise<Category[]> {
     console.error("Error fetching categories from Supabase:", err);
     return fallbackCategories;
   }
+});
+
+export async function getCategories(): Promise<Category[]> {
+  return cachedGetCategories();
 }
 
 export async function addCategory(category: Omit<Category, "id">) {
@@ -1477,9 +1591,6 @@ export async function getLinks(): Promise<LinkItem[]> {
 export async function getAdminLinks(): Promise<LinkItem[]> {
   const isAdmin = await checkAdminSession();
   if (!isAdmin) throw new Error("Unauthorized");
-
-  // Lazy purge expired items
-  await purgeExpiredDeletedItems();
 
   const wa = "628213444730";
   if (!isSupabaseConfigured()) {
@@ -1790,9 +1901,6 @@ export async function getAdminHeroSlides(): Promise<HeroSlide[]> {
   const isAdmin = await checkAdminSession();
   if (!isAdmin) throw new Error("Unauthorized");
 
-  // Lazy purge expired items
-  await purgeExpiredDeletedItems();
-
   if (!isSupabaseConfigured()) return [];
 
   try {
@@ -1994,9 +2102,6 @@ export async function getAdminTestimonials(): Promise<Testimonial[]> {
   const isAdmin = await checkAdminSession();
   if (!isAdmin) throw new Error("Unauthorized");
 
-  // Lazy purge expired items
-  await purgeExpiredDeletedItems();
-
   if (!isSupabaseConfigured()) {
     return fallbackTestimonials;
   }
@@ -2163,18 +2268,23 @@ const fallbackSettings: Record<string, string> = {
   roi_cogs_percent: "55",
 };
 
-export async function getAllSiteSettings(): Promise<Record<string, string>> {
+const cachedGetAllSiteSettings = cache(async (): Promise<Record<string, string>> => {
   if (!isSupabaseConfigured()) {
     return fallbackSettings;
   }
   try {
-    const { data, error } = await supabase.from("settings").select("key, value");
+    const { data, error } = await supabase
+      .from("settings")
+      .select("key, value")
+      .not("key", "like", "__admin_%");
     if (error) throw error;
     if (!data || data.length === 0) return fallbackSettings;
 
     const result: Record<string, string> = { ...fallbackSettings };
     data.forEach((item: { key: string; value: string }) => {
-      result[item.key] = item.value;
+      if (!item.key.startsWith("__admin_")) {
+        result[item.key] = item.value;
+      }
     });
     if (!result.wa_number || result.wa_number.includes("877")) {
       result.wa_number = "628213444730";
@@ -2187,6 +2297,10 @@ export async function getAllSiteSettings(): Promise<Record<string, string>> {
     console.error("Error fetching site settings from Supabase:", err);
     return fallbackSettings;
   }
+});
+
+export async function getAllSiteSettings(): Promise<Record<string, string>> {
+  return cachedGetAllSiteSettings();
 }
 
 export async function updateAllSiteSettings(settings: Record<string, string>) {
@@ -2197,10 +2311,12 @@ export async function updateAllSiteSettings(settings: Record<string, string>) {
     throw new Error("Supabase is not configured yet.");
   }
 
-  const rows = Object.entries(settings).map(([key, value]) => ({
-    key,
-    value: value ?? "",
-  }));
+  const rows = Object.entries(settings)
+    .filter(([key]) => !key.startsWith("__admin_"))
+    .map(([key, value]) => ({
+      key,
+      value: value ?? "",
+    }));
 
   const { data, error } = await supabaseAdmin
     .from("settings")
@@ -2732,7 +2848,6 @@ export async function getPromos(): Promise<PromoItem[]> {
 export async function getAdminPromos(): Promise<PromoItem[]> {
   const isAdmin = await checkAdminSession();
   if (!isAdmin) throw new Error("Unauthorized");
-  await purgeExpiredDeletedItems();
   const all = await fetchAllPromosFromStorage();
   return all
     .filter((item) => !item.deleted_at)
@@ -2827,7 +2942,7 @@ export async function swapPromoOrder(id1: string, order1: number, id2: string, o
 
 export type TrashItem = {
   id: string;
-  type: "menu" | "gallery" | "branch" | "link" | "slideshow" | "testimonial" | "package" | "faq" | "promo";
+  type: "menu" | "branch" | "link" | "slideshow" | "testimonial" | "package" | "faq" | "promo";
   title: string;
   subtitle?: string;
   image?: string;
@@ -2844,7 +2959,6 @@ export async function getTrashItems(): Promise<TrashItem[]> {
   try {
     const [
       { data: menus },
-      { data: gallery },
       { data: branches },
       { data: links },
       { data: slides },
@@ -2853,7 +2967,6 @@ export async function getTrashItems(): Promise<TrashItem[]> {
       { data: faqs },
     ] = await Promise.all([
       supabaseAdmin.from("menu_items").select("id, name, category, image, deleted_at").not("deleted_at", "is", null),
-      supabaseAdmin.from("gallery_items").select("id, title, category, image, deleted_at").not("deleted_at", "is", null),
       supabaseAdmin.from("branches").select("id, name, deleted_at").not("deleted_at", "is", null),
       supabaseAdmin.from("links").select("id, title, url, deleted_at").not("deleted_at", "is", null),
       supabaseAdmin.from("hero_slides").select("id, title, alt, image, deleted_at").not("deleted_at", "is", null),
@@ -2864,9 +2977,6 @@ export async function getTrashItems(): Promise<TrashItem[]> {
 
     if (menus) {
       menus.forEach((m) => trash.push({ id: m.id, type: "menu", title: m.name, subtitle: `Menu (${m.category})`, image: m.image, deleted_at: m.deleted_at }));
-    }
-    if (gallery) {
-      gallery.forEach((g) => trash.push({ id: g.id, type: "gallery", title: g.title, subtitle: `Galeri (${g.category})`, image: g.image, deleted_at: g.deleted_at }));
     }
     if (branches) {
       branches.forEach((b) => trash.push({ id: b.id, type: "branch", title: b.name, subtitle: "Cabang Outlet", deleted_at: b.deleted_at }));
@@ -2927,7 +3037,6 @@ export async function permanentDeleteTrashItem(id: string, type: TrashItem["type
 
   const tableMap: Record<Exclude<TrashItem["type"], "promo">, string> = {
     menu: "menu_items",
-    gallery: "gallery_items",
     branch: "branches",
     link: "links",
     slideshow: "hero_slides",
@@ -2939,7 +3048,7 @@ export async function permanentDeleteTrashItem(id: string, type: TrashItem["type
   const tableName = tableMap[type as Exclude<TrashItem["type"], "promo">];
   if (!tableName) return { success: false };
 
-  if (type === "menu" || type === "gallery" || type === "slideshow" || type === "package") {
+  if (type === "menu" || type === "slideshow" || type === "package") {
     const { data: item } = await supabaseAdmin.from(tableName).select("image").eq("id", id).single();
     if (item?.image) await deleteStorageFile(item.image);
   }
@@ -2966,7 +3075,6 @@ export async function restoreTrashItem(id: string, type: TrashItem["type"]) {
 
   const tableMap: Record<Exclude<TrashItem["type"], "promo">, string> = {
     menu: "menu_items",
-    gallery: "gallery_items",
     branch: "branches",
     link: "links",
     slideshow: "hero_slides",
@@ -3006,7 +3114,6 @@ export async function emptyAllTrashItems() {
 
     await Promise.all([
       supabaseAdmin.from("menu_items").delete().not("deleted_at", "is", null),
-      supabaseAdmin.from("gallery_items").delete().not("deleted_at", "is", null),
       supabaseAdmin.from("branches").delete().not("deleted_at", "is", null),
       supabaseAdmin.from("links").delete().not("deleted_at", "is", null),
       supabaseAdmin.from("hero_slides").delete().not("deleted_at", "is", null),

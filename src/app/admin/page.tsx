@@ -14,11 +14,6 @@ import {
   updateMenuItem,
   deleteMenuItem,
   restoreMenuItem,
-  getGalleryItems,
-  addGalleryItem,
-  updateGalleryItem,
-  deleteGalleryItem,
-  restoreGalleryItem,
   uploadImage,
   getBranches,
   addBranch,
@@ -35,7 +30,6 @@ import {
   checkAdminSession,
   toggleMenuItemAvailability,
   MenuItem,
-  GalleryItem,
   Branch,
   PartnershipLead,
   Category,
@@ -95,6 +89,9 @@ import {
   permanentDeleteTrashItem,
   emptyAllTrashItems,
   TrashItem,
+  getAdminSecurityInfo,
+  updateAdminCredentials,
+  AdminSecurityInfo,
 } from "@/app/actions";
 
 
@@ -165,19 +162,62 @@ export default function AdminDashboard() {
   const router = useRouter();
   
   // Tab State
-  type TabType = "menu" | "category" | "gallery" | "branch" | "leads" | "links" | "slideshow" | "promos" | "testimonials" | "settings" | "packages" | "faqs" | "trash";
-  const [activeTab, setActiveTabState] = useState<TabType>("menu");
+  type TabType =
+    | "dashboard"
+    | "menu"
+    | "category"
+    | "branch"
+    | "leads"
+    | "links"
+    | "slideshow"
+    | "promos"
+    | "testimonials"
+    | "settings"
+    | "packages"
+    | "faqs"
+    | "trash";
+  const [activeTab, setActiveTabState] = useState<TabType>("dashboard");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [witaClock, setWitaClock] = useState("10:00:00");
+  const [chartMode, setChartMode] = useState<"menu" | "links">("menu");
+
+  // Menu Pagination & Filter States
+  const [menuFilterCategory, setMenuFilterCategory] = useState<string>("all");
+  const [menuFilterStock, setMenuFilterStock] = useState<"all" | "available" | "unavailable">("all");
+  const [menuPerPage, setMenuPerPage] = useState<number>(10);
+  const [menuCurrentPage, setMenuCurrentPage] = useState<number>(1);
+
+  // Leads Pagination States
+  const [leadsPerPage, setLeadsPerPage] = useState<number>(10);
+  const [leadsCurrentPage, setLeadsCurrentPage] = useState<number>(1);
 
   const setActiveTab = (tab: TabType) => {
     setActiveTabState(tab);
     setSelectedBranchIds([]);
     setSelectedLeadIds([]);
+    setSearchQuery("");
+    setMenuCurrentPage(1);
+    setLeadsCurrentPage(1);
+    setIsSidebarOpen(false);
   };
+
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+      const wita = new Date(utcMs + 8 * 3600000);
+      const pad = (n: number) => n.toString().padStart(2, "0");
+      setWitaClock(`${pad(wita.getHours())}:${pad(wita.getMinutes())}:${pad(wita.getSeconds())}`);
+    };
+    updateClock();
+    const timer = setInterval(updateClock, 1000);
+    return () => clearInterval(timer);
+  }, []);
   
   // Data States
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
   const [partnershipLeads, setPartnershipLeads] = useState<PartnershipLead[]>([]);
@@ -195,7 +235,7 @@ export default function AdminDashboard() {
   // Undo / Garbage Collection State
   type UndoItem = {
     id: string;
-    type: "menu" | "gallery" | "branch" | "link" | "slide" | "promo" | "testimonial" | "package" | "faq";
+    type: "menu" | "branch" | "link" | "slide" | "promo" | "testimonial" | "package" | "faq";
     name: string;
     secondsRemaining: number;
     restoreAction: (id: string) => Promise<unknown>;
@@ -206,7 +246,6 @@ export default function AdminDashboard() {
   // Modal / Form States
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [isGalleryModalOpen, setIsGalleryModalOpen] = useState(false);
   const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [isSlideModalOpen, setIsSlideModalOpen] = useState(false);
@@ -217,7 +256,6 @@ export default function AdminDashboard() {
   
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [editingGalleryItem, setEditingGalleryItem] = useState<GalleryItem | null>(null);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
   const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
@@ -263,10 +301,6 @@ export default function AdminDashboard() {
   // Form Fields - Category
   const [categoryKey, setCategoryKey] = useState("");
   const [categoryName, setCategoryName] = useState("");
-
-  // Form Fields - Gallery
-  const [galleryTitle, setGalleryTitle] = useState("");
-  const [galleryCat, setGalleryCat] = useState("");
 
   // Form Fields - Branch
   const [branchName, setBranchName] = useState("");
@@ -340,6 +374,23 @@ export default function AdminDashboard() {
   const [settingHaki, setSettingHaki] = useState("IPT2024001234");
   const [settingCogsPercent, setSettingCogsPercent] = useState("55");
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  // Form Fields - Admin Security & Credentials
+  const [securityInfo, setSecurityInfo] = useState<AdminSecurityInfo>({
+    username: "admin",
+    isCustomUsername: false,
+    isCustomPassword: false,
+    updatedAt: null,
+  });
+  const [adminUsernameInput, setAdminUsernameInput] = useState("admin");
+  const [currentPasswordInput, setCurrentPasswordInput] = useState("");
+  const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [capsLockActive, setCapsLockActive] = useState(false);
+  const [isSavingCredentials, setIsSavingCredentials] = useState(false);
 
   // Form Fields - Partnership Package
   const [pkgKey, setPkgKey] = useState("express");
@@ -419,7 +470,7 @@ export default function AdminDashboard() {
   // Trigger Undo registration
   const triggerUndo = (
     id: string,
-    type: "menu" | "gallery" | "branch" | "link" | "slide" | "promo" | "testimonial" | "package" | "faq",
+    type: "menu" | "branch" | "link" | "slide" | "promo" | "testimonial" | "package" | "faq",
     name: string,
     restoreAction: (id: string) => Promise<unknown>,
     reloadCallback: () => void
@@ -453,7 +504,6 @@ export default function AdminDashboard() {
 
         const [
           menus,
-          galleries,
           branchesData,
           leadsData,
           categoriesData,
@@ -466,9 +516,9 @@ export default function AdminDashboard() {
           packagesData,
           faqsData,
           trashData,
+          securityData,
         ] = await Promise.all([
           getMenuItems(),
-          getGalleryItems(),
           getBranches(),
           getPartnershipLeads(),
           getCategories(),
@@ -481,11 +531,11 @@ export default function AdminDashboard() {
           getAdminPartnershipPackages(),
           getAdminFaqs(),
           getTrashItems(),
+          getAdminSecurityInfo(),
         ]);
 
         if (active) {
           setMenuItems(menus);
-          setGalleryItems(galleries);
           setBranches(branchesData);
           setPartnershipLeads(leadsData);
           setCategories(categoriesData);
@@ -497,6 +547,10 @@ export default function AdminDashboard() {
           setPackages(packagesData);
           setFaqs(faqsData);
           setTrashItems(trashData);
+          if (securityData) {
+            setSecurityInfo(securityData);
+            setAdminUsernameInput(securityData.username);
+          }
           if (settingsData) {
             if (settingsData.wa_number) setSettingWaNumber(settingsData.wa_number);
             if (settingsData.wa_number_formatted) setSettingWaFormatted(settingsData.wa_number_formatted);
@@ -793,132 +847,6 @@ export default function AdminDashboard() {
     );
   };
 
-  // Open Gallery Modal for Add
-  const openGalleryAdd = () => {
-    setEditingGalleryItem(null);
-    setGalleryTitle("");
-    setGalleryCat("");
-    setImagePreview("");
-    setImageUrlInput("");
-    setSelectedFile(null);
-    setFormErrors({});
-    setIsGalleryModalOpen(true);
-  };
-
-  // Open Gallery Modal for Edit
-  const openGalleryEdit = (item: GalleryItem) => {
-    setEditingGalleryItem(item);
-    setGalleryTitle(item.title);
-    setGalleryCat(item.category);
-    setImagePreview(item.image);
-    setImageUrlInput(item.image);
-    setSelectedFile(null);
-    setFormErrors({});
-    setIsGalleryModalOpen(true);
-  };
-
-  // Handle Submit Gallery Form
-  const handleGallerySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Client-side validation with red borders
-    const errors: Record<string, boolean> = {};
-    if (!galleryTitle.trim()) errors.galleryTitle = true;
-    if (!galleryCat.trim()) errors.galleryCat = true;
-    if (!selectedFile && !imageUrlInput.trim()) errors.image = true;
-
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      showMsg("error", "Silakan lengkapi kolom wajib yang ditandai merah.");
-      return;
-    }
-
-    // Validate URL if provided manually
-    if (!selectedFile && imageUrlInput && !isValidUrl(imageUrlInput)) {
-      setFormErrors({ image: true });
-      showMsg("error", "Tautan URL gambar tidak valid! Harus diawali dengan http:// atau https://");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setFormErrors({});
-    try {
-      let finalImageUrl = imageUrlInput;
-
-      if (selectedFile) {
-        setIsUploading(true);
-        let fileToUpload = selectedFile;
-
-        try {
-          // Compress image client-side first to WebP
-          fileToUpload = await compressImage(selectedFile);
-        } catch (compressionErr) {
-          console.warn("Client-side image compression failed, using original file:", compressionErr);
-        }
-
-        const uploadData = new FormData();
-        uploadData.append("file", fileToUpload);
-        const uploadResult = await uploadImage(uploadData);
-        finalImageUrl = uploadResult.url;
-        setIsUploading(false);
-      }
-
-      if (!finalImageUrl) {
-        setFormErrors({ image: true });
-        showMsg("error", "Silakan unggah gambar atau masukkan URL gambar.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      const itemPayload = {
-        title: galleryTitle,
-        image: finalImageUrl,
-        category: galleryCat,
-      };
-
-      if (editingGalleryItem && editingGalleryItem.id) {
-        // Edit Mode
-        const updated = await updateGalleryItem(editingGalleryItem.id, itemPayload);
-        setGalleryItems((prev) =>
-          prev.map((g) => (g.id === editingGalleryItem.id ? updated : g))
-        );
-        showMsg("success", `Galeri "${galleryTitle}" berhasil diperbarui!`);
-      } else {
-        // Create Mode
-        const added = await addGalleryItem(itemPayload);
-        setGalleryItems((prev) => [...prev, added]);
-        showMsg("success", `Galeri "${galleryTitle}" berhasil ditambahkan!`);
-      }
-
-      setIsGalleryModalOpen(false);
-    } catch (err) {
-      console.error(err);
-      const errMsg = err instanceof Error ? err.message : "Gagal menyimpan item galeri.";
-      showMsg("error", errMsg);
-    } finally {
-      setIsSubmitting(false);
-      setIsUploading(false);
-    }
-  };
-
-  // Handle Delete Gallery
-  const handleGalleryDelete = async (id: string, title: string) => {
-    try {
-      await deleteGalleryItem(id);
-      setGalleryItems((prev) => prev.filter((g) => g.id !== id));
-      triggerUndo(id, "gallery", title, restoreGalleryItem, async () => {
-        const updatedGallery = await getGalleryItems();
-        setGalleryItems(updatedGallery);
-      });
-      showMsg("success", `Foto "${title}" dipindahkan ke keranjang sampah.`);
-    } catch (err) {
-      console.error(err);
-      const errMsg = err instanceof Error ? err.message : `Gagal menghapus foto "${title}".`;
-      showMsg("error", errMsg);
-    }
-  };
-
-  // Open Branch Modal for Add
   // Open Branch Modal for Add
   const openBranchAdd = () => {
     setEditingBranch(null);
@@ -1792,6 +1720,99 @@ export default function AdminDashboard() {
     }
   };
 
+  // ADMIN SECURITY & CREDENTIALS HANDLERS
+  const handleCapsLockEvent = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    setCapsLockActive(e.getModifierState("CapsLock"));
+  };
+
+  const executeSaveAdminCredentials = async () => {
+    setIsSavingCredentials(true);
+    try {
+      const result = await updateAdminCredentials({
+        currentPassword: currentPasswordInput,
+        newUsername: adminUsernameInput.trim(),
+        newPassword: newPasswordInput.trim(),
+        confirmPassword: confirmPasswordInput.trim(),
+      });
+
+      if (!result.success) {
+        showMsg("error", result.error || "Gagal memperbarui kredensial admin.");
+        return;
+      }
+
+      if (result.securityInfo) {
+        setSecurityInfo(result.securityInfo);
+        setAdminUsernameInput(result.securityInfo.username);
+      }
+      setCurrentPasswordInput("");
+      setNewPasswordInput("");
+      setConfirmPasswordInput("");
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+      showMsg("success", result.message || "Kredensial admin berhasil diperbarui!");
+    } catch (err: unknown) {
+      console.error(err);
+      showMsg("error", err instanceof Error ? err.message : "Terjadi kesalahan saat menyimpan kredensial.");
+    } finally {
+      setIsSavingCredentials(false);
+    }
+  };
+
+  const handleSaveAdminCredentials = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanUser = adminUsernameInput.trim();
+    const cleanCurrent = currentPasswordInput.trim();
+    const cleanNew = newPasswordInput.trim();
+    const cleanConfirm = confirmPasswordInput.trim();
+
+    if (!cleanCurrent) {
+      showMsg("error", "Masukkan Password Saat Ini terlebih dahulu untuk verifikasi keamanan.");
+      return;
+    }
+
+    const isUsernameChanging = cleanUser.toLowerCase() !== securityInfo.username.toLowerCase();
+    const isPasswordChanging = cleanNew.length > 0 || cleanConfirm.length > 0;
+
+    if (!isUsernameChanging && !isPasswordChanging) {
+      showMsg("error", "Belum ada perubahan pada Username maupun Password Baru.");
+      return;
+    }
+
+    if (cleanUser.length < 3 || cleanUser.length > 32 || !/^[a-zA-Z0-9._-]+$/.test(cleanUser)) {
+      showMsg("error", "Username harus 3–32 karakter (huruf/angka/titik/garis bawah/strip, tanpa spasi).");
+      return;
+    }
+
+    if (isPasswordChanging) {
+      if (cleanNew.length < 8) {
+        showMsg("error", "Password baru minimal 8 karakter.");
+        return;
+      }
+      if (!/[a-zA-Z]/.test(cleanNew) || !/[0-9]/.test(cleanNew)) {
+        showMsg("error", "Password baru harus mengandung kombinasi huruf dan angka.");
+        return;
+      }
+      if (cleanNew.toLowerCase() === cleanUser.toLowerCase()) {
+        showMsg("error", "Password baru tidak boleh sama dengan username admin.");
+        return;
+      }
+      if (cleanNew !== cleanConfirm) {
+        showMsg("error", "Konfirmasi password baru belum cocok! Periksa kembali ketikan Anda.");
+        return;
+      }
+    }
+
+    const summaryText =
+      isUsernameChanging && isPasswordChanging
+        ? `Anda akan mengganti Username menjadi "${cleanUser}" serta memperbarui Password Admin. Pastikan Anda sudah mencatat kredensial baru ini. Lanjutkan?`
+        : isPasswordChanging
+        ? `Anda akan memperbarui Password Admin untuk akun "${cleanUser}". Pastikan Anda sudah mengingat/mencatat password baru ini. Lanjutkan?`
+        : `Anda akan mengganti Username Admin dari "${securityInfo.username}" menjadi "${cleanUser}". Lanjutkan?`;
+
+    askConfirmation("Konfirmasi Perubahan Keamanan Akun", summaryText, executeSaveAdminCredentials);
+  };
+
   // PARTNERSHIP PACKAGES HANDLERS
   const openPackageAdd = () => {
     setEditingPackage(null);
@@ -2010,27 +2031,95 @@ export default function AdminDashboard() {
     }
   };
 
+  // Handle bulk leads deletion
+  const handleBulkLeadsDelete = () => {
+    if (selectedLeadIds.length === 0) return;
+
+    askConfirmation(
+      "Hapus Prospek Terpilih",
+      `Apakah Anda yakin ingin menghapus ${selectedLeadIds.length} prospek yang terpilih? Tindakan ini tidak dapat dibatalkan.`,
+      async () => {
+        try {
+          await deletePartnershipLeads(selectedLeadIds);
+          setPartnershipLeads((prev) => prev.filter((l) => !selectedLeadIds.includes(l.id!)));
+          setSelectedLeadIds([]);
+          showMsg("success", "Prospek terpilih berhasil dihapus massal.");
+        } catch (err) {
+          console.error(err);
+          const errMsg = err instanceof Error ? err.message : "Gagal menghapus prospek terpilih secara massal.";
+          showMsg("error", errMsg);
+        }
+      }
+    );
+  };
+
+  // Compile partnership leads data into a CSV blob and download it
+  const handleExportLeadsCSV = () => {
+    if (partnershipLeads.length === 0) return;
+
+    const headers = ["Nama Calon Mitra", "No. WhatsApp", "Tanggal Terdaftar", "Status Follow-up"];
+    const rows = partnershipLeads.map((lead) => {
+      const formattedDate = lead.created_at
+        ? new Date(lead.created_at).toLocaleString("id-ID", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })
+        : "-";
+      const name = `"${(lead.name || "").replace(/"/g, '""')}"`;
+      const phone = `"${(lead.phone || "").replace(/"/g, '""')}"`;
+      const date = `"${formattedDate.replace(/"/g, '""')}"`;
+      const status = `"${(lead.status || "").replace(/"/g, '""')}"`;
+      return [name, phone, date, status].join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Leads_Kemitraan_Ayapi_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showMsg("success", "Data prospek kemitraan berhasil diekspor ke CSV.");
+  };
+
   // Trash Bin Handlers
   const handleRestoreTrash = async (id: string, type: TrashItem["type"], title: string) => {
     try {
       await restoreTrashItem(id, type);
       showMsg("success", `"${title}" berhasil dipulihkan!`);
-      const [updatedTrash, updatedMenu, updatedGallery, updatedBranches, updatedLinks, updatedSlides, updatedTestimonials] = await Promise.all([
+      const [
+        updatedTrash,
+        updatedMenu,
+        updatedBranches,
+        updatedLinks,
+        updatedSlides,
+        updatedPromos,
+        updatedTestimonials,
+        updatedPackages,
+        updatedFaqs,
+      ] = await Promise.all([
         getTrashItems(),
         getMenuItems(),
-        getGalleryItems(),
         getBranches(),
         getAdminLinks(),
         getAdminHeroSlides(),
+        getAdminPromos(),
         getAdminTestimonials(),
+        getAdminPartnershipPackages(),
+        getAdminFaqs(),
       ]);
       setTrashItems(updatedTrash);
       setMenuItems(updatedMenu);
-      setGalleryItems(updatedGallery);
       setBranches(updatedBranches);
       setLinks(updatedLinks);
       setHeroSlides(updatedSlides);
+      setPromos(updatedPromos);
       setTestimonials(updatedTestimonials);
+      setPackages(updatedPackages);
+      setFaqs(updatedFaqs);
     } catch (err) {
       console.error(err);
       showMsg("error", "Gagal memulihkan item.");
@@ -2090,487 +2179,1404 @@ export default function AdminDashboard() {
     }
   };
 
+  const menuNavItems: {
+    id: TabType;
+    label: string;
+    subtitle: string;
+    icon: string;
+    count?: number;
+    addLabel?: string;
+    onAdd?: () => void;
+    searchable?: boolean;
+  }[] = [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      subtitle: "Ringkasan performa katalog menu, prospek kemitraan, dan pembaruan konten Ayapi.",
+      icon: "⊞",
+      addLabel: "Tambah Menu",
+      onAdd: openMenuAdd,
+    },
+    {
+      id: "menu",
+      label: "Daftar Menu",
+      subtitle: "Kelola katalog menu ayam krispi bakar, harga, kategori, dan stok harian.",
+      icon: "🍔",
+      count: menuItems.length,
+      addLabel: "Tambah Menu",
+      onAdd: openMenuAdd,
+      searchable: true,
+    },
+    {
+      id: "category",
+      label: "Kategori",
+      subtitle: "Atur pengelompokan kategori untuk navigasi katalog menu pelanggan.",
+      icon: "📂",
+      count: categories.length,
+      addLabel: "Tambah Kategori",
+      onAdd: openCategoryAdd,
+      searchable: true,
+    },
+    {
+      id: "branch",
+      label: "Cabang Ojol",
+      subtitle: "Kelola daftar lokasi outlet, jam operasional WITA, serta link GoFood, GrabFood & ShopeeFood.",
+      icon: "📍",
+      count: branches.length,
+      addLabel: "Tambah Cabang",
+      onAdd: openBranchAdd,
+      searchable: true,
+    },
+    {
+      id: "leads",
+      label: "Leads Kemitraan",
+      subtitle: "Pantau calon mitra franchise yang masuk, status follow-up WhatsApp, dan ekspor CSV.",
+      icon: "💼",
+      count: partnershipLeads.length,
+      searchable: true,
+    },
+    {
+      id: "slideshow",
+      label: "Slideshow",
+      subtitle: "Atur gambar banner utama, judul promosi, dan tombol CTA di beranda website.",
+      icon: "🖼️",
+      count: heroSlides.length,
+      addLabel: "Tambah Slide",
+      onAdd: openSlideAdd,
+    },
+    {
+      id: "promos",
+      label: "Promo Pop-up",
+      subtitle: "Kelola kartu promo spesial, syarat & ketentuan pop-up modal, serta QR voucher.",
+      icon: "🏷️",
+      count: promos.length,
+      addLabel: "Tambah Promo",
+      onAdd: openPromoAdd,
+    },
+    {
+      id: "testimonials",
+      label: "Testimoni",
+      subtitle: "Ulasan pelanggan dan cerita sukses mitra resmi Ayapi Krispi Bakar.",
+      icon: "💬",
+      count: testimonials.length,
+      addLabel: "Tambah Testimoni",
+      onAdd: openTestimonialAdd,
+    },
+    {
+      id: "packages",
+      label: "Paket Franchise",
+      subtitle: "Konfigurasi harga investasi, mockup booth/resto, dan fasilitas paket kemitraan.",
+      icon: "📦",
+      count: packages.length,
+      addLabel: "Tambah Paket",
+      onAdd: openPackageAdd,
+    },
+    {
+      id: "faqs",
+      label: "FAQ Franchise",
+      subtitle: "Daftar tanya-jawab seputar sistem kemitraan, bahan baku, dan SOP Ayapi.",
+      icon: "❓",
+      count: faqs.length,
+      addLabel: "Tambah FAQ",
+      onAdd: openFaqAdd,
+    },
+    {
+      id: "links",
+      label: "Kelola Tautan",
+      subtitle: "Atur tombol halaman Link-in-Bio (/links), tema warna, dan QR Code meja outlet.",
+      icon: "🔗",
+      count: links.length,
+      addLabel: "Tambah Tautan",
+      onAdd: openLinkAdd,
+    },
+  ];
+
+  const generalNavItems: {
+    id: TabType;
+    label: string;
+    subtitle: string;
+    icon: string;
+    count?: number;
+  }[] = [
+    {
+      id: "settings",
+      label: "Pengaturan Web",
+      subtitle: "Ubah nomor WhatsApp CS, email resmi, alamat kantor pusat, sertifikasi Halal/HKI, dan HPP ROI.",
+      icon: "⚙️",
+    },
+    {
+      id: "trash",
+      label: "Keranjang Sampah",
+      subtitle: "Pulihkan data yang terhapus atau kosongkan keranjang sampah secara permanen.",
+      icon: "🗑️",
+      count: trashItems.length,
+    },
+  ];
+
+  const allTabItems = [...menuNavItems, ...generalNavItems];
+  const currentTabInfo = allTabItems.find((t) => t.id === activeTab) || menuNavItems[0];
+  const activeMenuInfo = menuNavItems.find((t) => t.id === activeTab);
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredMenuItems = menuItems.filter((m) => {
+    const matchesSearch =
+      !normalizedQuery ||
+      m.name.toLowerCase().includes(normalizedQuery) ||
+      m.category.toLowerCase().includes(normalizedQuery) ||
+      (m.description || "").toLowerCase().includes(normalizedQuery);
+    const matchesCategory =
+      menuFilterCategory === "all" || m.category.toLowerCase() === menuFilterCategory.toLowerCase();
+    const matchesStock =
+      menuFilterStock === "all" ||
+      (menuFilterStock === "available" && m.is_available !== false) ||
+      (menuFilterStock === "unavailable" && m.is_available === false);
+    return matchesSearch && matchesCategory && matchesStock;
+  });
+
+  const totalMenuPages = Math.max(1, Math.ceil(filteredMenuItems.length / menuPerPage));
+  const safeMenuPage = Math.min(menuCurrentPage, totalMenuPages);
+  const paginatedMenuItems = filteredMenuItems.slice(
+    (safeMenuPage - 1) * menuPerPage,
+    safeMenuPage * menuPerPage
+  );
+
+  const filteredCategories = normalizedQuery
+    ? categories.filter(
+        (c) =>
+          c.name.toLowerCase().includes(normalizedQuery) ||
+          c.key.toLowerCase().includes(normalizedQuery)
+      )
+    : categories;
+
+  const filteredBranches = normalizedQuery
+    ? branches.filter((b) => b.name.toLowerCase().includes(normalizedQuery))
+    : branches;
+
+  const filteredLeads = normalizedQuery
+    ? partnershipLeads.filter(
+        (l) =>
+          l.name.toLowerCase().includes(normalizedQuery) ||
+          l.phone.toLowerCase().includes(normalizedQuery) ||
+          (l.status || "").toLowerCase().includes(normalizedQuery)
+      )
+    : partnershipLeads;
+
+  const totalLeadsPages = Math.max(1, Math.ceil(filteredLeads.length / leadsPerPage));
+  const safeLeadsPage = Math.min(leadsCurrentPage, totalLeadsPages);
+  const paginatedLeads = filteredLeads.slice(
+    (safeLeadsPage - 1) * leadsPerPage,
+    safeLeadsPage * leadsPerPage
+  );
+
+  const totalAvailableMenu = menuItems.filter((m) => m.is_available !== false).length;
+  const unavailableMenuCount = Math.max(0, menuItems.length - totalAvailableMenu);
+  const availabilityPercent =
+    menuItems.length > 0 ? Math.round((totalAvailableMenu / menuItems.length) * 100) : 100;
+  const newLeadsCount = partnershipLeads.filter((l) => l.status === "Baru").length;
+  const contactedLeadsCount = partnershipLeads.filter((l) => l.status === "Dihubungi").length;
+  const officialPartnersCount = partnershipLeads.filter((l) => l.status === "Mitra Resmi").length;
+  const totalLinkClicks = links.reduce((sum, l) => sum + (l.clicks || 0), 0);
+  const activePromosCount = promos.filter((p) => p.is_active).length;
+
+  // Real data for the Dual-Mode Capsule Chart:
+  // Mode "menu": Menu distribution across categories (Krisbar, Krispy, Geprek, Patungan, Minuman, Sambal)
+  const defaultCatKeys =
+    categories.length > 0
+      ? categories
+      : [
+          { key: "krisbar", name: "Krisbar" },
+          { key: "krispy", name: "Satset Krispy" },
+          { key: "geprek", name: "Paket Geprek" },
+          { key: "patungan", name: "Patungan" },
+          { key: "minuman", name: "Minuman" },
+          { key: "sambal", name: "Sambal" },
+        ];
+
+  const menuCategoryBars = defaultCatKeys.slice(0, 7).map((cat) => {
+    const count = menuItems.filter((m) => m.category.toLowerCase() === cat.key.toLowerCase()).length;
+    const shortLabel = cat.name
+      .replace(/\(.*?\)/g, "")
+      .replace(/Paket\s+/i, "")
+      .replace(/Aneka\s+/i, "")
+      .replace(/Pilihan\s+/i, "")
+      .trim()
+      .split(" ")[0]
+      .slice(0, 7);
+    return {
+      key: cat.key,
+      label: shortLabel,
+      full: cat.name,
+      value: count,
+      unit: "menu",
+    };
+  });
+
+  // Mode "links": Top Link-in-Bio Click Performance
+  const linkClickBars = (links.length > 0 ? links : [])
+    .slice(0, 7)
+    .map((lnk) => {
+      const shortLabel = lnk.title.split(" ")[0].slice(0, 7);
+      return {
+        key: lnk.id || lnk.title,
+        label: shortLabel,
+        full: lnk.title,
+        value: lnk.clicks || 0,
+        unit: "klik",
+      };
+    });
+
+  const activeChartBars = chartMode === "menu" ? menuCategoryBars : linkClickBars;
+  const maxBarValue = Math.max(...activeChartBars.map((b) => b.value), 1);
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-brand-dark">
-      {/* Top Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center gap-3">
-              <div className="bg-brand-red p-2.5 rounded-xl shadow-sm">
-                <Image
-                  src="/logo.png"
-                  alt="Ayapi Logo"
-                  width={90}
-                  height={50}
-                  className="w-[70px] h-auto"
-                />
-              </div>
-              <div>
-                <h1 className="font-extrabold text-lg text-brand-dark leading-tight">Admin CMS</h1>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Ayapi Management</p>
-              </div>
-            </div>
-            
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 border border-gray-200 hover:border-brand-red/30 hover:text-brand-red text-gray-600 font-bold text-xs uppercase px-4 py-2 rounded-xl transition-all cursor-pointer bg-white"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Keluar
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-[calc(100dvh+96px)] sm:min-h-[calc(100dvh+112px)] -mt-24 sm:-mt-28 bg-white font-sans text-gray-900 p-2.5 sm:p-4 lg:p-5 flex gap-4">
+      {/* Mobile Sidebar Backdrop */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
-      {/* Main Container */}
-      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 space-y-8">
-        
-        {/* Toast Alerts */}
-        {message && (
-          <div
-            className={`fixed bottom-6 right-6 z-50 p-4 rounded-2xl shadow-xl border flex items-center gap-3 max-w-md animate-fade-in ${
-              message.type === "success"
-                ? "bg-green-50 border-green-200 text-green-700"
-                : "bg-red-50 border-red-200 text-red-700"
-            }`}
+      {/* =====================================================================
+          LEFT FLOATING SIDEBAR (COURSIE STYLE WITH AYAPI COLORS)
+         ===================================================================== */}
+      <aside
+        className={`fixed lg:sticky top-2.5 sm:top-4 lg:top-5 left-2.5 sm:left-4 lg:left-0 z-50 h-[calc(100dvh-20px)] sm:h-[calc(100dvh-32px)] lg:h-[calc(100dvh-40px)] w-64 xl:w-68 bg-[#F7F7F9] rounded-[28px] py-6 px-5 flex flex-col justify-between shrink-0 transition-transform duration-300 ease-out border border-gray-200/60 lg:border-transparent shadow-2xl lg:shadow-none ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-[115%] lg:translate-x-0"
+        }`}
+      >
+        {/* Top Brand Logo */}
+        <div className="flex items-center justify-between px-2 mb-5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab("dashboard")}
+            className="flex items-center gap-3 cursor-pointer group text-left"
           >
-            {message.type === "success" ? (
-              <svg className="w-5 h-5 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            )}
-            <span className="text-xs font-bold">{message.text}</span>
-          </div>
-        )}
+            <div className="bg-gradient-to-br from-[#D32F2F] to-[#8B0000] p-2 rounded-2xl shadow-md shadow-brand-red/20 transition-transform group-hover:scale-105">
+              <Image
+                src="/logo.png"
+                alt="Ayapi Logo"
+                width={68}
+                height={38}
+                className="w-[52px] h-auto"
+              />
+            </div>
+            <div>
+              <span className="text-xl font-black tracking-tight text-gray-900 flex items-center gap-1">
+                ayapi
+                <span className="w-2 h-2 rounded-full bg-[#FF6B00] inline-block" />
+              </span>
+              <span className="text-[10px] font-bold text-gray-400 block -mt-0.5">
+                Admin Workspace
+              </span>
+            </div>
+          </button>
 
-        {/* Tab Controls & Add CTA */}
-        {(() => {
-          const tabsList: { id: TabType; label: string; icon: string; count?: number; badgeBg?: string }[] = [
-            { id: "menu", label: "Daftar Menu", icon: "🍔", count: menuItems.length },
-            { id: "category", label: "Kategori", icon: "📂", count: categories.length },
-            { id: "gallery", label: "Galeri Visual", icon: "📸", count: galleryItems.length },
-            { id: "branch", label: "Cabang Ojol", icon: "📍", count: branches.length },
-            { id: "leads", label: "Leads Kemitraan", icon: "💼", count: partnershipLeads.length },
-            { id: "links", label: "Kelola Tautan", icon: "🔗", count: links.length },
-            { id: "slideshow", label: "Slideshow", icon: "🖼️", count: heroSlides.length },
-            { id: "promos", label: "Promo Pop-up", icon: "🏷️", count: promos.length },
-            { id: "testimonials", label: "Testimoni", icon: "💬", count: testimonials.length },
-            { id: "settings", label: "Pengaturan Web", icon: "⚙️" },
-            { id: "packages", label: "Paket Franchise", icon: "📦", count: packages.length },
-            { id: "faqs", label: "FAQ Franchise", icon: "❓", count: faqs.length },
-            { id: "trash", label: "Keranjang Sampah", icon: "🗑️", count: trashItems.length, badgeBg: trashItems.length > 0 ? "bg-red-500 text-white" : "bg-gray-200/80 text-gray-700" },
-          ];
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden p-1.5 rounded-xl text-gray-400 hover:text-gray-800 hover:bg-gray-200/60 cursor-pointer"
+            aria-label="Tutup menu"
+          >
+            ✕
+          </button>
+        </div>
 
-          return (
-            <div className="bg-white/90 backdrop-blur-md border border-gray-200/80 p-3.5 sm:p-5 rounded-3xl shadow-sm space-y-4">
-              
-              {/* Mobile Select Dropdown (HP Only) */}
-              <div className="sm:hidden">
-                <label className="block text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1.5 px-1">
-                  Pilih Modul Admin
-                </label>
-                <div className="relative">
-                  <select
-                    value={activeTab}
-                    onChange={(e) => setActiveTab(e.target.value as TabType)}
-                    className="w-full bg-gray-50 border border-gray-200 text-brand-dark font-extrabold text-xs py-3 pl-4 pr-10 rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-brand-red shadow-inner cursor-pointer"
+        {/* Scrollable Menu & General Sections */}
+        <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pr-0.5">
+          {/* MENU GROUP */}
+          <div>
+            <p className="px-3 text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">
+              MENU
+            </p>
+            <div className="space-y-0.5">
+              {menuNavItems.map((item) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveTab(item.id)}
+                    className={`relative w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs transition-all cursor-pointer group ${
+                      isActive
+                        ? "text-gray-900 font-extrabold bg-white shadow-2xs"
+                        : "text-gray-400 hover:text-gray-800 font-semibold hover:bg-white/60"
+                    }`}
                   >
-                    {tabsList.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.icon} {t.label} {t.count !== undefined ? `(${t.count})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-gray-500 text-xs">
-                    ▼
-                  </div>
-                </div>
-              </div>
-
-              {/* Desktop & Touch Scrollable Pill Bar */}
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 scroll-smooth w-full">
-                  {tabsList.map((t) => {
-                    const isActive = activeTab === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        onClick={() => setActiveTab(t.id)}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all duration-200 flex items-center gap-2 cursor-pointer shrink-0 ${
+                    {/* Left Vertical Pill Indicator (like Coursie reference) */}
+                    {isActive && (
+                      <span className="absolute -left-5 top-1/2 -translate-y-1/2 w-1.5 h-7 rounded-r-full bg-gradient-to-b from-[#D32F2F] to-[#8B0000]" />
+                    )}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className={`w-6 h-6 rounded-lg flex items-center justify-center text-sm shrink-0 transition-colors ${
                           isActive
-                            ? "bg-gradient-to-r from-brand-red to-[#b81414] text-white shadow-md shadow-brand-red/25 scale-[1.02]"
-                            : "text-gray-600 hover:bg-gray-100/90 hover:text-brand-dark bg-gray-50/80 border border-gray-100"
+                            ? "bg-red-50 text-brand-red font-black"
+                            : "text-gray-400 group-hover:text-gray-700"
                         }`}
                       >
-                        <span className="text-sm">{t.icon}</span>
-                        <span>{t.label}</span>
-                        {t.count !== undefined && (
-                          <span
-                            className={`px-2 py-0.5 text-[10px] font-black rounded-full transition-colors ${
-                              isActive
-                                ? "bg-white/20 text-white"
-                                : t.badgeBg || "bg-gray-200/80 text-gray-700"
+                        {item.icon}
+                      </span>
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    {item.count !== undefined && (
+                      <span
+                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
+                          isActive
+                            ? "bg-gradient-to-r from-[#D32F2F] to-[#8B0000] text-white"
+                            : item.id === "leads" && newLeadsCount > 0
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-gray-200/70 text-gray-500"
+                        }`}
+                      >
+                        {item.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* GENERAL GROUP */}
+          <div>
+            <p className="px-3 text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">
+              GENERAL
+            </p>
+            <div className="space-y-0.5">
+              {generalNavItems.map((item) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveTab(item.id)}
+                    className={`relative w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs transition-all cursor-pointer group ${
+                      isActive
+                        ? "text-gray-900 font-extrabold bg-white shadow-2xs"
+                        : "text-gray-400 hover:text-gray-800 font-semibold hover:bg-white/60"
+                    }`}
+                  >
+                    {isActive && (
+                      <span className="absolute -left-5 top-1/2 -translate-y-1/2 w-1.5 h-7 rounded-r-full bg-gradient-to-b from-[#D32F2F] to-[#8B0000]" />
+                    )}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className={`w-6 h-6 rounded-lg flex items-center justify-center text-sm shrink-0 ${
+                          isActive ? "bg-red-50 text-brand-red" : "text-gray-400 group-hover:text-gray-700"
+                        }`}
+                      >
+                        {item.icon}
+                      </span>
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    {item.count !== undefined && (
+                      <span
+                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
+                          item.count > 0
+                            ? "bg-red-100 text-red-700"
+                            : "bg-gray-200/70 text-gray-500"
+                        }`}
+                      >
+                        {item.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-semibold text-gray-400 hover:text-brand-red hover:bg-red-50/60 transition-all cursor-pointer group"
+              >
+                <span className="w-6 h-6 rounded-lg flex items-center justify-center text-sm shrink-0">
+                  🚪
+                </span>
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Dark Promo Card (Matches "Download our Mobile app" in Coursie) */}
+        <div className="mt-4 pt-2 shrink-0">
+          <div className="bg-gradient-to-br from-[#190404] via-[#310808] to-[#0D1117] rounded-2xl p-4 text-white relative overflow-hidden shadow-lg">
+            <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-brand-red/35 blur-xl pointer-events-none" />
+            <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full bg-[#FF6B00]/25 blur-xl pointer-events-none" />
+
+            <div className="relative z-10 space-y-3">
+              <div className="w-7 h-7 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center text-xs">
+                🔥
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold leading-snug text-white">
+                  Portal Link &amp; QR Outlet
+                </h4>
+                <p className="text-[10px] text-white/60 font-medium mt-0.5">
+                  Tautan bio &amp; QR meja pelanggan
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("links")}
+                className="w-full py-2 rounded-xl bg-gradient-to-r from-[#D32F2F] to-[#FF6B00] hover:from-[#B71C1C] hover:to-[#E65100] text-white font-extrabold text-[11px] shadow-md transition-all cursor-pointer"
+              >
+                Kelola QR &amp; Link
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* =====================================================================
+          RIGHT COLUMN: FLOATING TOP BAR + MAIN WORKSPACE CONTAINER
+         ===================================================================== */}
+      <div className="flex-1 flex flex-col gap-4 min-w-0">
+        {/* TOP FLOATING HEADER BAR */}
+        <header className="bg-[#F7F7F9] rounded-[24px] px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
+          {/* Left: Mobile Menu Trigger + Pill Search Input */}
+          <div className="flex items-center gap-3 flex-1 max-w-md">
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-gray-700 hover:text-brand-red shadow-2xs cursor-pointer shrink-0"
+              aria-label="Buka menu navigasi"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            <div className="relative flex-1">
+              <svg
+                className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (activeTab === "dashboard" && e.target.value.trim()) {
+                    setActiveTabState("menu");
+                  }
+                }}
+                placeholder="Cari menu, cabang, prospek..."
+                className="w-full pl-11 pr-9 py-2.5 bg-white rounded-full text-xs font-semibold text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-red/20 shadow-2xs transition-all"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-xs cursor-pointer"
+                  aria-label="Hapus pencarian"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Action Icon Pills & Admin Profile */}
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            {/* Leads Inbox Button */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("leads")}
+              className="relative w-10 h-10 rounded-full bg-white hover:bg-red-50 text-gray-600 hover:text-brand-red flex items-center justify-center shadow-2xs transition-colors cursor-pointer"
+              title="Prospek Kemitraan"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              {newLeadsCount > 0 && (
+                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-brand-red ring-2 ring-white" />
+              )}
+            </button>
+
+            {/* Trash / Notification Bell Button */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("trash")}
+              className="relative w-10 h-10 rounded-full bg-white hover:bg-red-50 text-gray-600 hover:text-brand-red flex items-center justify-center shadow-2xs transition-colors cursor-pointer"
+              title={`Keranjang Sampah (${trashItems.length})`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {trashItems.length > 0 && (
+                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white" />
+              )}
+            </button>
+
+            {/* Profile Chip (Click to jump to Account Security) */}
+            <div className="flex items-center gap-2.5 pl-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("settings");
+                  setTimeout(() => {
+                    document
+                      .getElementById("admin-security-section")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 100);
+                }}
+                className="flex items-center gap-2.5 text-left rounded-full pr-2 py-0.5 hover:bg-white/80 transition-colors cursor-pointer group"
+                title="Pengaturan Keamanan & Password Admin"
+              >
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D32F2F] to-[#FF6B00] text-white font-black text-xs flex items-center justify-center shadow-sm ring-2 ring-white shrink-0 group-hover:scale-105 transition-transform">
+                  AY
+                </div>
+                <div className="hidden sm:block text-left">
+                  <p className="text-xs font-extrabold text-gray-900 group-hover:text-brand-red leading-tight transition-colors">
+                    Admin Ayapi
+                  </p>
+                  <p className="text-[10px] text-gray-400 font-semibold">
+                    @{securityInfo.username} • Keamanan
+                  </p>
+                </div>
+              </button>
+              <a
+                href="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden md:flex items-center justify-center w-7 h-7 rounded-full hover:bg-white text-gray-400 hover:text-brand-red transition-colors"
+                title="Buka Website Utama"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        </header>
+
+        {/* =====================================================================
+            MAIN ROUNDED WORKSPACE CANVAS (COURSIE STYLE)
+           ===================================================================== */}
+        <main className="bg-[#F7F7F9] rounded-[28px] p-4 sm:p-6 lg:p-7 flex-1 space-y-6">
+          {/* Toast Alerts */}
+          {message && (
+            <div
+              className={`fixed bottom-6 right-6 z-50 p-4 rounded-2xl shadow-xl border flex items-center gap-3 max-w-md animate-fade-in ${
+                message.type === "success"
+                  ? "bg-green-50 border-green-200 text-green-700"
+                  : "bg-red-50 border-red-200 text-red-700"
+              }`}
+            >
+              {message.type === "success" ? (
+                <svg className="w-5 h-5 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              )}
+              <span className="text-xs font-bold">{message.text}</span>
+            </div>
+          )}
+
+          {/* Header Title Row + Dual Pill Action Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2.5">
+                {activeTab !== "dashboard" && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("dashboard")}
+                    className="w-8 h-8 rounded-full bg-white hover:bg-red-50 text-gray-500 hover:text-brand-red flex items-center justify-center shadow-2xs transition-colors cursor-pointer"
+                    title="Kembali ke Dashboard"
+                  >
+                    ←
+                  </button>
+                )}
+                <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+                  {currentTabInfo.label}
+                </h1>
+              </div>
+              <p className="text-xs text-gray-400 font-medium mt-1">
+                {currentTabInfo.subtitle}
+              </p>
+            </div>
+
+            {/* Dual Pill Buttons (Matches "+ Add Project" & "Import Data" in reference) */}
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              {activeMenuInfo?.onAdd && (
+                <button
+                  type="button"
+                  onClick={activeMenuInfo.onAdd}
+                  className="bg-gradient-to-r from-[#C62828] to-[#8B0000] hover:from-[#B71C1C] hover:to-[#7A0000] text-white font-bold text-xs px-5 py-2.5 rounded-full shadow-md shadow-brand-red/20 hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="text-sm leading-none">+</span>
+                  <span>{activeMenuInfo.addLabel}</span>
+                </button>
+              )}
+
+              {activeTab === "leads" && selectedLeadIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleBulkLeadsDelete}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-full shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>🗑️</span>
+                  <span>Hapus ({selectedLeadIds.length})</span>
+                </button>
+              )}
+
+              {activeTab === "trash" && trashItems.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    askConfirmation(
+                      "Kosongkan Sampah",
+                      "Apakah Anda yakin ingin menghapus semua item di Keranjang Sampah secara permanen?",
+                      handleEmptyTrash
+                    )
+                  }
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-5 py-2.5 rounded-full shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>🗑️</span>
+                  <span>Kosongkan Sampah</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={
+                    activeTab === "leads"
+                      ? handleExportLeadsCSV
+                      : () => setActiveTab(activeTab === "dashboard" ? "promos" : "dashboard")
+                  }
+                  className="bg-white hover:bg-gray-50 text-gray-800 border border-gray-300/90 font-bold text-xs px-5 py-2.5 rounded-full transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  {activeTab === "leads" ? (
+                    <>
+                      <span>📥</span>
+                      <span>Export CSV</span>
+                    </>
+                  ) : activeTab === "dashboard" ? (
+                    <>
+                      <span>🏷️</span>
+                      <span>Kelola Promo</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>⊞</span>
+                      <span>Ringkasan Dashboard</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* =================================================================
+              ROW 1: 4 KPI CARDS (1st CARD FILLED IN AYAPI GRADIENT + 3 WHITE)
+             ================================================================= */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {/* Card 1: Highlighted Primary Ayapi Gradient Card */}
+            <div
+              onClick={() => setActiveTab("menu")}
+              className="bg-gradient-to-br from-[#D32F2F] via-[#B71C1C] to-[#7F0000] text-white rounded-3xl p-5 flex flex-col justify-between cursor-pointer shadow-lg shadow-brand-red/20 hover:scale-[1.01] transition-transform"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white/95">Menu Tersedia</span>
+                <span className="w-8 h-8 rounded-full bg-white text-brand-red flex items-center justify-center text-xs font-black shadow-xs">
+                  ↗
+                </span>
+              </div>
+              <div className="text-4xl font-black tracking-tight my-3">
+                {totalAvailableMenu}
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-white/85 font-medium">
+                <span className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-bold">
+                  {menuItems.length}▲
+                </span>
+                <span>Total item di katalog menu</span>
+              </div>
+            </div>
+
+            {/* Card 2: White KPI Card - Leads Kemitraan */}
+            <div
+              onClick={() => setActiveTab("leads")}
+              className="bg-white rounded-3xl p-5 flex flex-col justify-between cursor-pointer border border-gray-100 hover:border-brand-red/30 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-800">Prospek Kemitraan</span>
+                <span className="w-8 h-8 rounded-full border border-gray-300 text-gray-600 flex items-center justify-center text-xs font-bold">
+                  ↗
+                </span>
+              </div>
+              <div className="text-4xl font-black text-gray-900 tracking-tight my-3">
+                {partnershipLeads.length}
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-brand-red font-semibold">
+                <span className="px-1.5 py-0.5 rounded border border-red-200 bg-red-50 text-[10px] font-bold">
+                  {newLeadsCount}▲
+                </span>
+                <span>Prospek baru menunggu follow-up</span>
+              </div>
+            </div>
+
+            {/* Card 3: White KPI Card - Cabang & Ojol */}
+            <div
+              onClick={() => setActiveTab("branch")}
+              className="bg-white rounded-3xl p-5 flex flex-col justify-between cursor-pointer border border-gray-100 hover:border-brand-red/30 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-800">Cabang &amp; Ojol</span>
+                <span className="w-8 h-8 rounded-full border border-gray-300 text-gray-600 flex items-center justify-center text-xs font-bold">
+                  ↗
+                </span>
+              </div>
+              <div className="text-4xl font-black text-gray-900 tracking-tight my-3">
+                {branches.length}
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-brand-red font-semibold">
+                <span className="px-1.5 py-0.5 rounded border border-red-200 bg-red-50 text-[10px] font-bold">
+                  {categories.length}▲
+                </span>
+                <span>Outlet aktif &amp; kategori menu</span>
+              </div>
+            </div>
+
+            {/* Card 4: White KPI Card - Klik Link-in-Bio */}
+            <div
+              onClick={() => setActiveTab("links")}
+              className="bg-white rounded-3xl p-5 flex flex-col justify-between cursor-pointer border border-gray-100 hover:border-brand-red/30 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-800">Klik Link-in-Bio</span>
+                <span className="w-8 h-8 rounded-full border border-gray-300 text-gray-600 flex items-center justify-center text-xs font-bold">
+                  ↗
+                </span>
+              </div>
+              <div className="text-4xl font-black text-gray-900 tracking-tight my-3">
+                {totalLinkClicks}
+              </div>
+              <div className="text-[11px] text-brand-red font-semibold">
+                {activePromosCount} Promo &amp; {heroSlides.filter((s) => s.is_active).length} Slide Aktif
+              </div>
+            </div>
+          </div>
+
+          {/* Loading Spinner */}
+          {isLoadingData ? (
+            <div className="bg-white border border-gray-100 rounded-3xl p-16 text-center shadow-2xs">
+              <svg className="animate-spin h-10 w-10 text-brand-red mx-auto" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <p className="text-gray-400 font-bold text-xs uppercase tracking-wider mt-4">Memuat data dari Supabase...</p>
+            </div>
+          ) : (
+            /* Data Render Section */
+            <div className="animate-fade-in">
+              {/* ===============================================================
+                  BENTO GRID OVERVIEW (WHEN activeTab === "dashboard")
+                 =============================================================== */}
+              {activeTab === "dashboard" && (
+                <div className="space-y-4">
+                  {/* MIDDLE BENTO ROW: Capsule Chart (5) + Kontak/CS Card (3) + Menu/Promo List (4) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    {/* Widget 1: Dual-Mode Vertical Capsule Pill Chart (5 cols) */}
+                    <div className="lg:col-span-5 bg-white rounded-3xl p-5 border border-gray-100 flex flex-col justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <div>
+                          <h3 className="text-sm font-extrabold text-gray-900">
+                            {chartMode === "menu" ? "Distribusi Kategori Menu" : "Performa Klik Link-in-Bio"}
+                          </h3>
+                          <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                            {chartMode === "menu"
+                              ? "Klik batang untuk filter katalog menu"
+                              : `Total ${totalLinkClicks} klik tercatat di halaman /links`}
+                          </p>
+                        </div>
+
+                        {/* Mode Switcher Pill */}
+                        <div className="inline-flex items-center bg-[#F7F7F9] p-1 rounded-full border border-gray-200/70">
+                          <button
+                            type="button"
+                            onClick={() => setChartMode("menu")}
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold transition-all cursor-pointer ${
+                              chartMode === "menu"
+                                ? "bg-white text-brand-red shadow-2xs"
+                                : "text-gray-400 hover:text-gray-700"
                             }`}
                           >
-                            {t.count}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                            🍗 Menu
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setChartMode("links")}
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold transition-all cursor-pointer ${
+                              chartMode === "links"
+                                ? "bg-white text-brand-red shadow-2xs"
+                                : "text-gray-400 hover:text-gray-700"
+                            }`}
+                          >
+                            🔥 Klik Link
+                          </button>
+                        </div>
+                      </div>
 
-                {/* Desktop Action CTA Button */}
-                <div className="hidden lg:block shrink-0">
-                  {activeTab === "menu" ? (
-                    <button
-                      onClick={openMenuAdd}
-                      className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all text-xs flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah Menu
-                    </button>
-                  ) : activeTab === "category" ? (
-                    <button
-                      onClick={openCategoryAdd}
-                      className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all text-xs flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah Kategori
-                    </button>
-                  ) : activeTab === "gallery" ? (
-                    <button
-                      onClick={openGalleryAdd}
-                      className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all text-xs flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah Foto
-                    </button>
-                  ) : activeTab === "branch" ? (
-                    <button
-                      onClick={openBranchAdd}
-                      className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all text-xs flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah Cabang
-                    </button>
-                  ) : activeTab === "links" ? (
-                    <button
-                      onClick={openLinkAdd}
-                      className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all text-xs flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah Tautan
-                    </button>
-                  ) : activeTab === "slideshow" ? (
-                    <button
-                      onClick={openSlideAdd}
-                      className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all text-xs flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah Slide
-                    </button>
-                  ) : activeTab === "promos" ? (
-                    <button
-                      onClick={openPromoAdd}
-                      className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all text-xs flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah Promo
-                    </button>
-                  ) : activeTab === "testimonials" ? (
-                    <button
-                      onClick={openTestimonialAdd}
-                      className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all text-xs flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah Testimoni
-                    </button>
-                  ) : activeTab === "packages" ? (
-                    <button
-                      onClick={openPackageAdd}
-                      className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all text-xs flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah Paket
-                    </button>
-                  ) : activeTab === "faqs" ? (
-                    <button
-                      onClick={openFaqAdd}
-                      className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all text-xs flex items-center gap-2 cursor-pointer whitespace-nowrap"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Tambah FAQ
-                    </button>
-                  ) : activeTab === "trash" ? (
-                    trashItems.length > 0 && (
-                      <button
-                        onClick={() => askConfirmation("Kosongkan Sampah", "Apakah Anda yakin ingin menghapus semua item di Keranjang Sampah secara permanen?", handleEmptyTrash)}
-                        className="bg-red-600 hover:bg-red-700 text-white font-extrabold uppercase tracking-widest px-5 py-2.5 rounded-xl shadow-sm transition-all text-xs flex items-center gap-2 cursor-pointer whitespace-nowrap"
+                      <div
+                        className="grid gap-2 sm:gap-3 items-end pt-1"
+                        style={{
+                          gridTemplateColumns: `repeat(${Math.max(activeChartBars.length, 1)}, minmax(0, 1fr))`,
+                        }}
                       >
-                        🗑️ Kosongkan Sampah
-                      </button>
-                    )
-                  ) : null}
-                </div>
-              </div>
-
-              {/* Action CTA Button on Mobile & Tablet */}
-              <div className="lg:hidden">
-                {activeTab === "menu" ? (
-                  <button
-                    onClick={openMenuAdd}
-                    className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-6 py-3 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Tambah Menu
-                  </button>
-                ) : activeTab === "category" ? (
-                  <button
-                    onClick={openCategoryAdd}
-                    className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-6 py-3 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Tambah Kategori
-                  </button>
-                ) : activeTab === "gallery" ? (
-                  <button
-                    onClick={openGalleryAdd}
-                    className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-6 py-3 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Tambah Foto
-                  </button>
-                ) : activeTab === "branch" ? (
-                  <button
-                    onClick={openBranchAdd}
-                    className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-6 py-3 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Tambah Cabang
-                  </button>
-                ) : activeTab === "links" ? (
-                  <button
-                    onClick={openLinkAdd}
-                    className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-6 py-3 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Tambah Tautan
-                  </button>
-                ) : activeTab === "slideshow" ? (
-                  <button
-                    onClick={openSlideAdd}
-                    className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-6 py-3 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Tambah Slide
-                  </button>
-                ) : activeTab === "promos" ? (
-                  <button
-                    onClick={openPromoAdd}
-                    className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-6 py-3 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Tambah Promo
-                  </button>
-                ) : activeTab === "testimonials" ? (
-                  <button
-                    onClick={openTestimonialAdd}
-                    className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-6 py-3 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Tambah Testimoni
-                  </button>
-                ) : activeTab === "packages" ? (
-                  <button
-                    onClick={openPackageAdd}
-                    className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-6 py-3 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Tambah Paket
-                  </button>
-                ) : activeTab === "faqs" ? (
-                  <button
-                    onClick={openFaqAdd}
-                    className="w-full bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-6 py-3 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Tambah FAQ
-                  </button>
-                ) : activeTab === "trash" ? (
-                  trashItems.length > 0 && (
-                    <button
-                      onClick={() => askConfirmation("Kosongkan Sampah", "Apakah Anda yakin ingin menghapus semua item di Keranjang Sampah secara permanen?", handleEmptyTrash)}
-                      className="w-full bg-red-600 hover:bg-red-700 text-white font-extrabold uppercase tracking-widest px-5 py-3 rounded-xl shadow-sm transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      🗑️ Kosongkan Sampah
-                    </button>
-                  )
-                ) : null}
-              </div>
-
-            </div>
-          );
-        })()}
-
-        {/* Loading Spinner */}
-        {isLoadingData ? (
-          <div className="bg-white border border-gray-100 rounded-3xl p-16 text-center shadow-sm">
-            <svg className="animate-spin h-10 w-10 text-brand-red mx-auto" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-            <p className="text-gray-400 font-bold text-xs uppercase tracking-wider mt-4">Memuat data dari Supabase...</p>
-          </div>
-        ) : (
-          /* Data Render Section */
-          <div className="animate-fade-in">
-            {activeTab === "menu" && (
-              /* MENU TAB CONTENT */
-              <div className="bg-white border border-gray-200/60 rounded-3xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-100 font-bold text-[10px] text-gray-400 uppercase tracking-wider">
-                        <th className="py-4 px-6">Gambar</th>
-                        <th className="py-4 px-6">Nama Menu</th>
-                        <th className="py-4 px-6">Kategori</th>
-                        <th className="py-4 px-6">Harga</th>
-                        <th className="py-4 px-6">Deskripsi</th>
-                        <th className="py-4 px-6 text-center">Stok</th>
-                        <th className="py-4 px-6 text-center">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {menuItems.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="py-12 text-center text-xs text-gray-400 font-bold">
-                            Tidak ada item menu tersedia.
-                          </td>
-                        </tr>
-                      ) : (
-                        menuItems.map((item) => (
-                          <tr key={item.id} className="hover:bg-gray-50/50 text-xs">
-                            {/* Image */}
-                            <td className="py-4 px-6 shrink-0">
-                              <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shadow-inner">
-                                <img
-                                  src={item.image}
-                                  alt={item.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            </td>
-                            {/* Name */}
-                            <td className="py-4 px-6 font-bold text-brand-dark text-sm">{item.name}</td>
-                            {/* Category */}
-                            <td className="py-4 px-6">
-                              <span className="bg-brand-red/10 text-brand-red font-bold text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full">
-                                {item.category === "krisbar" ? "Krisbar" : item.category === "paket" ? "Paket" : item.category === "geprek" ? "Geprek" : "Sambal"}
+                        {activeChartBars.map((bar, idx) => {
+                          const heightPct =
+                            bar.value === 0
+                              ? 22
+                              : Math.max(30, Math.min(100, Math.round((bar.value / maxBarValue) * 100)));
+                          const isEven = idx % 2 === 0;
+                          return (
+                            <button
+                              key={bar.key}
+                              type="button"
+                              onClick={() => {
+                                if (chartMode === "menu") {
+                                  setMenuFilterCategory(bar.key);
+                                  setMenuCurrentPage(1);
+                                  setActiveTab("menu");
+                                } else {
+                                  setActiveTab("links");
+                                }
+                              }}
+                              title={`${bar.full}: ${bar.value} ${bar.unit}`}
+                              className="flex flex-col items-center gap-1.5 group cursor-pointer"
+                            >
+                              <span className="text-[10px] font-extrabold text-gray-500 group-hover:text-brand-red transition-colors">
+                                {bar.value}
                               </span>
-                            </td>
-                            {/* Price */}
-                            <td className="py-4 px-6 font-extrabold text-brand-yellow text-sm bg-brand-yellow/5">{item.price}</td>
-                            {/* Description */}
-                            <td className="py-4 px-6 text-gray-500 max-w-[240px] truncate leading-relaxed">
-                              {item.description || "-"}
-                            </td>
-                            {/* Status Availability Toggle */}
-                            <td className="py-4 px-6 text-center">
-                              <button
-                                onClick={() => handleToggleAvailability(item.id!, item.is_available !== false)}
-                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                  item.is_available !== false ? "bg-green-500" : "bg-gray-200"
-                                }`}
-                                role="switch"
-                                aria-checked={item.is_available !== false}
-                                title={item.is_available !== false ? "Ubah status ke Habis" : "Ubah status ke Tersedia"}
-                              >
-                                <span
-                                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                    item.is_available !== false ? "translate-x-5" : "translate-x-0"
-                                  }`}
-                                />
-                              </button>
-                            </td>
-                            {/* Actions */}
-                            <td className="py-4 px-6">
-                              <div className="flex justify-center gap-2">
-                                <button
-                                  onClick={() => openMenuEdit(item)}
-                                  className="p-2 border border-gray-200 hover:border-brand-yellow/40 hover:text-brand-yellow rounded-xl transition-all cursor-pointer bg-white text-gray-500"
-                                  title="Edit Menu"
+                              <div className="w-full max-w-[38px] h-32 bg-gray-100 rounded-full flex flex-col justify-end overflow-hidden p-0.5">
+                                <div
+                                  style={{ height: `${heightPct}%` }}
+                                  className={`w-full rounded-full transition-all duration-500 flex flex-col items-center pt-2 ${
+                                    isEven
+                                      ? "bg-gradient-to-b from-[#D32F2F] to-[#8B0000]"
+                                      : "bg-gradient-to-b from-[#FF6B00] to-[#C62828]"
+                                  } group-hover:brightness-110`}
                                 >
-                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => handleMenuDelete(item.id!, item.name)}
-                                  className="p-2 border border-gray-200 hover:border-brand-red/40 hover:text-brand-red rounded-xl transition-all cursor-pointer bg-white text-gray-500"
-                                  title="Hapus Menu"
-                                >
-                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
+                                  <span className="w-2 h-2 rounded-full bg-white/90 shrink-0" />
+                                </div>
                               </div>
+                              <span className="text-[10px] font-bold text-gray-400 group-hover:text-brand-red truncate max-w-full">
+                                {bar.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Widget 2: Quick Action / CS Card (3 cols - like "Meeting with Arc Company") */}
+                    <div className="lg:col-span-3 bg-white rounded-3xl p-5 border border-gray-100 flex flex-col justify-between gap-4">
+                      <div>
+                        <span className="text-xs font-extrabold text-gray-900 block">
+                          Pusat Kemitraan &amp; CS
+                        </span>
+                        <h4 className="text-base font-black text-[#8B0000] leading-snug mt-3">
+                          Hotline WhatsApp Resmi Ayapi
+                        </h4>
+                        <p className="text-[11px] text-gray-400 font-semibold mt-1.5">
+                          WA: {settingWaFormatted || "+62 821-3444-730"}
+                        </p>
+                        <p className="text-[10px] text-gray-400 font-medium mt-0.5">
+                          HPP Kalkulator ROI: {settingCogsPercent || "55"}% • Tema Bio: {theme.toUpperCase()}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("settings")}
+                        className="w-full py-3 px-4 rounded-full bg-gradient-to-r from-[#C62828] to-[#8B0000] hover:from-[#B71C1C] hover:to-[#7A0000] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-brand-red/20 transition-all cursor-pointer"
+                      >
+                        <span>⚙️</span>
+                        <span>Pengaturan Web</span>
+                      </button>
+                    </div>
+
+                    {/* Widget 3: Katalog Menu & Promo Unggulan (4 cols - like right list card) */}
+                    <div className="lg:col-span-4 bg-white rounded-3xl p-5 border border-gray-100 flex flex-col justify-between">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-extrabold text-gray-900">
+                          Katalog Menu &amp; Paket
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={openMenuAdd}
+                          className="px-3 py-1 rounded-full border border-brand-red/30 text-brand-red hover:bg-red-50 text-[10px] font-extrabold transition-colors cursor-pointer"
+                        >
+                          + Baru
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {menuItems.slice(0, 4).map((m, i) => {
+                          const badgeColors = [
+                            "bg-red-50 text-brand-red",
+                            "bg-orange-50 text-orange-600",
+                            "bg-amber-50 text-amber-600",
+                            "bg-emerald-50 text-emerald-600",
+                          ];
+                          return (
+                            <div
+                              key={m.id || i}
+                              onClick={() => openMenuEdit(m)}
+                              className="flex items-center gap-3 p-1.5 rounded-2xl hover:bg-gray-50 transition-colors cursor-pointer"
+                            >
+                              <div
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 overflow-hidden border border-gray-100 ${
+                                  badgeColors[i % badgeColors.length]
+                                }`}
+                              >
+                                {m.image ? (
+                                  <img
+                                    src={m.image}
+                                    alt={m.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  "🍗"
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-extrabold text-gray-900 truncate">
+                                  {m.name}
+                                </p>
+                                <p className="text-[10px] text-gray-400 font-semibold">
+                                  Harga: {m.price} • {m.category.toUpperCase()}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* BOTTOM BENTO ROW: Prospek Mitra (5) + Semi-Circle Gauge (3) + WITA Dark Clock (4) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    {/* Widget 4: Prospek Kemitraan Terbaru (5 cols - like Team Member Status list) */}
+                    <div className="lg:col-span-5 bg-white rounded-3xl p-5 border border-gray-100 flex flex-col justify-between">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-extrabold text-gray-900">
+                          Prospek Mitra Terbaru
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("leads")}
+                          className="px-3 py-1 rounded-full border border-brand-red/30 text-brand-red hover:bg-red-50 text-[10px] font-extrabold transition-colors cursor-pointer"
+                        >
+                          + Lihat Semua
+                        </button>
+                      </div>
+
+                      {partnershipLeads.length === 0 ? (
+                        <div className="py-8 text-center text-xs text-gray-400 font-semibold">
+                          Belum ada prospek kemitraan yang masuk.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {partnershipLeads.slice(0, 3).map((lead, idx) => {
+                            const avatarColors = [
+                              "from-[#D32F2F] to-[#FF6B00]",
+                              "from-[#8B0000] to-[#D32F2F]",
+                              "from-[#FF6B00] to-[#F59E0B]",
+                            ];
+                            const statusStyle =
+                              lead.status === "Mitra Resmi"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : lead.status === "Dihubungi"
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : lead.status === "Batal"
+                                ? "bg-red-50 text-red-600 border-red-200"
+                                : "bg-red-50 text-brand-red border-red-200";
+                            return (
+                              <div
+                                key={lead.id || idx}
+                                onClick={() => setActiveTab("leads")}
+                                className="flex items-center justify-between gap-3 p-1.5 rounded-2xl hover:bg-gray-50 transition-colors cursor-pointer"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div
+                                    className={`w-9 h-9 rounded-full bg-gradient-to-br ${
+                                      avatarColors[idx % avatarColors.length]
+                                    } text-white font-black text-xs flex items-center justify-center shrink-0`}
+                                  >
+                                    {(lead.name || "M").substring(0, 2).toUpperCase()}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-extrabold text-gray-900 truncate">
+                                      {lead.name}
+                                    </p>
+                                    <p className="text-[10px] text-gray-400 font-medium truncate">
+                                      WhatsApp: <span className="font-bold text-gray-600">{lead.phone}</span>
+                                    </p>
+                                  </div>
+                                </div>
+                                <span
+                                  className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold shrink-0 ${statusStyle}`}
+                                >
+                                  {lead.status || "Baru"}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Widget 5: Semi-Circle Gauge Chart (3 cols - like "41% Project Ended") */}
+                    <div className="lg:col-span-3 bg-white rounded-3xl p-5 border border-gray-100 flex flex-col justify-between">
+                      <h3 className="text-sm font-extrabold text-gray-900">
+                        Ketersediaan Menu
+                      </h3>
+
+                      <div className="relative flex flex-col items-center justify-center my-2">
+                        <svg viewBox="0 0 200 115" className="w-44 h-26 overflow-visible">
+                          {/* Background Track Arc */}
+                          <path
+                            d="M 20 100 A 80 80 0 0 1 180 100"
+                            fill="none"
+                            stroke="#F1F5F9"
+                            strokeWidth="22"
+                            strokeLinecap="round"
+                          />
+                          {/* Active Ayapi Red Arc */}
+                          <path
+                            d="M 20 100 A 80 80 0 0 1 180 100"
+                            fill="none"
+                            stroke="url(#ayapiGaugeGrad)"
+                            strokeWidth="22"
+                            strokeLinecap="round"
+                            strokeDasharray="251.3"
+                            strokeDashoffset={251.3 * (1 - availabilityPercent / 100)}
+                          />
+                          <defs>
+                            <linearGradient id="ayapiGaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#D32F2F" />
+                              <stop offset="65%" stopColor="#8B0000" />
+                              <stop offset="100%" stopColor="#FF6B00" />
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                        <div className="text-center -mt-10">
+                          <span className="text-3xl font-black text-gray-900 block leading-none">
+                            {availabilityPercent}%
+                          </span>
+                          <span className="text-[10px] font-bold text-brand-red mt-1 block">
+                            Stok Menu Aktif
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-center gap-3 pt-2 text-[10px] font-bold text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#D32F2F]" />
+                          Tersedia ({totalAvailableMenu})
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#8B0000]" />
+                          Mitra ({officialPartnersCount + contactedLeadsCount})
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-gray-300" />
+                          Habis ({unavailableMenuCount})
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Widget 6: Dark Time Tracker Card (4 cols - Live WITA Operational Clock) */}
+                    <div className="lg:col-span-4 bg-gradient-to-br from-[#160303] via-[#2B0707] to-[#090D16] rounded-3xl p-5 text-white relative overflow-hidden flex flex-col justify-between shadow-lg">
+                      <div className="absolute -right-10 -top-10 w-36 h-36 rounded-full bg-brand-red/30 blur-2xl pointer-events-none" />
+                      <div className="absolute -left-10 -bottom-10 w-36 h-36 rounded-full bg-[#FF6B00]/20 blur-2xl pointer-events-none" />
+
+                      <div className="relative z-10 flex items-center justify-between">
+                        <span className="text-xs font-extrabold text-white/90">
+                          Waktu Operasional WITA
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-extrabold uppercase tracking-wider">
+                          Live Bali
+                        </span>
+                      </div>
+
+                      <div className="relative z-10 text-center my-4">
+                        <div className="text-3xl sm:text-4xl font-black tracking-wider font-mono text-white">
+                          {witaClock}
+                        </div>
+                        <p className="text-[10px] text-white/60 font-semibold mt-1">
+                          {branches.length} Cabang Terdaftar • {packages.length} Paket Franchise
+                        </p>
+                      </div>
+
+                      <div className="relative z-10 flex items-center justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("branch")}
+                          className="w-10 h-10 rounded-full bg-white text-gray-900 hover:scale-105 flex items-center justify-center shadow-md transition-transform cursor-pointer"
+                          title="Kelola Jam Cabang"
+                        >
+                          📍
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("slideshow")}
+                          className="w-10 h-10 rounded-full bg-[#E53935] hover:bg-[#D32F2F] text-white hover:scale-105 flex items-center justify-center shadow-md transition-transform cursor-pointer"
+                          title="Kelola Slideshow"
+                        >
+                          🖼️
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "menu" && (
+                /* MENU TAB CONTENT WITH FILTERS & PAGINATION */
+                <div className="bg-white border border-gray-200/60 rounded-3xl overflow-hidden shadow-sm">
+                  {/* Top Filter & Items-Per-Page Toolbar */}
+                  <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/40 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    {/* Category Filter Pills */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuFilterCategory("all");
+                          setMenuCurrentPage(1);
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                          menuFilterCategory === "all"
+                            ? "bg-gradient-to-r from-[#D32F2F] to-[#8B0000] text-white shadow-xs"
+                            : "bg-white border border-gray-200 text-gray-600 hover:border-brand-red/40 hover:text-brand-red"
+                        }`}
+                      >
+                        Semua ({menuItems.length})
+                      </button>
+                      {defaultCatKeys.map((cat) => {
+                        const count = menuItems.filter(
+                          (m) => m.category.toLowerCase() === cat.key.toLowerCase()
+                        ).length;
+                        const isActive = menuFilterCategory.toLowerCase() === cat.key.toLowerCase();
+                        return (
+                          <button
+                            key={cat.key}
+                            type="button"
+                            onClick={() => {
+                              setMenuFilterCategory(cat.key);
+                              setMenuCurrentPage(1);
+                            }}
+                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                              isActive
+                                ? "bg-gradient-to-r from-[#D32F2F] to-[#8B0000] text-white shadow-xs"
+                                : "bg-white border border-gray-200 text-gray-600 hover:border-brand-red/40 hover:text-brand-red"
+                            }`}
+                          >
+                            {cat.name} ({count})
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Right Controls: Stock Filter + Items Per Page */}
+                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                      <select
+                        value={menuFilterStock}
+                        onChange={(e) => {
+                          setMenuFilterStock(e.target.value as "all" | "available" | "unavailable");
+                          setMenuCurrentPage(1);
+                        }}
+                        className="bg-white border border-gray-200 rounded-full px-3.5 py-1.5 text-xs font-bold text-gray-700 focus:outline-none focus:border-brand-red cursor-pointer"
+                      >
+                        <option value="all">Semua Stok</option>
+                        <option value="available">✅ Stok Tersedia</option>
+                        <option value="unavailable">⛔ Stok Habis</option>
+                      </select>
+
+                      <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-full px-3 py-1">
+                        <span className="text-[11px] font-bold text-gray-400">Tampilkan:</span>
+                        <select
+                          value={menuPerPage}
+                          onChange={(e) => {
+                            setMenuPerPage(Number(e.target.value));
+                            setMenuCurrentPage(1);
+                          }}
+                          className="text-xs font-extrabold text-brand-red bg-transparent focus:outline-none cursor-pointer"
+                        >
+                          <option value={5}>5 menu</option>
+                          <option value={10}>10 menu</option>
+                          <option value={20}>20 menu</option>
+                          <option value={9999}>Semua</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100 font-bold text-[10px] text-gray-400 uppercase tracking-wider">
+                          <th className="py-4 px-6">Gambar</th>
+                          <th className="py-4 px-6">Nama Menu</th>
+                          <th className="py-4 px-6">Kategori</th>
+                          <th className="py-4 px-6">Harga</th>
+                          <th className="py-4 px-6">Deskripsi</th>
+                          <th className="py-4 px-6 text-center">Stok</th>
+                          <th className="py-4 px-6 text-center">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {paginatedMenuItems.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="py-12 text-center text-xs text-gray-400 font-bold">
+                              Tidak ada item menu yang sesuai filter.
                             </td>
                           </tr>
-                        ))
+                        ) : (
+                          paginatedMenuItems.map((item) => {
+                            const matchedCat = defaultCatKeys.find(
+                              (c) => c.key.toLowerCase() === item.category.toLowerCase()
+                            );
+                            const catLabel = matchedCat ? matchedCat.name : item.category;
+                            return (
+                              <tr key={item.id} className="hover:bg-gray-50/50 text-xs">
+                                {/* Image */}
+                                <td className="py-4 px-6 shrink-0">
+                                  <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shadow-inner">
+                                    <img
+                                      src={item.image}
+                                      alt={item.name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                </td>
+                                {/* Name */}
+                                <td className="py-4 px-6 font-bold text-brand-dark text-sm">{item.name}</td>
+                                {/* Category */}
+                                <td className="py-4 px-6">
+                                  <span className="bg-brand-red/10 text-brand-red font-bold text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full whitespace-nowrap">
+                                    {catLabel}
+                                  </span>
+                                </td>
+                                {/* Price */}
+                                <td className="py-4 px-6 font-extrabold text-brand-yellow text-sm bg-brand-yellow/5 whitespace-nowrap">
+                                  {item.price}
+                                </td>
+                                {/* Description */}
+                                <td className="py-4 px-6 text-gray-500 max-w-[240px] truncate leading-relaxed">
+                                  {item.description || "-"}
+                                </td>
+                                {/* Status Availability Toggle */}
+                                <td className="py-4 px-6 text-center">
+                                  <button
+                                    onClick={() => handleToggleAvailability(item.id!, item.is_available !== false)}
+                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                      item.is_available !== false ? "bg-green-500" : "bg-gray-200"
+                                    }`}
+                                    role="switch"
+                                    aria-checked={item.is_available !== false}
+                                    title={item.is_available !== false ? "Ubah status ke Habis" : "Ubah status ke Tersedia"}
+                                  >
+                                    <span
+                                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                        item.is_available !== false ? "translate-x-5" : "translate-x-0"
+                                      }`}
+                                    />
+                                  </button>
+                                </td>
+                                {/* Actions */}
+                                <td className="py-4 px-6">
+                                  <div className="flex justify-center gap-2">
+                                    <button
+                                      onClick={() => openMenuEdit(item)}
+                                      className="p-2 border border-gray-200 hover:border-brand-yellow/40 hover:text-brand-yellow rounded-xl transition-all cursor-pointer bg-white text-gray-500"
+                                      title="Edit Menu"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      onClick={() => handleMenuDelete(item.id!, item.name)}
+                                      className="p-2 border border-gray-200 hover:border-brand-red/40 hover:text-brand-red rounded-xl transition-all cursor-pointer bg-white text-gray-500"
+                                      title="Hapus Menu"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination Footer */}
+                  {filteredMenuItems.length > 0 && (
+                    <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <p className="text-xs font-semibold text-gray-500">
+                        Menampilkan{" "}
+                        <span className="font-extrabold text-gray-900">
+                          {(safeMenuPage - 1) * menuPerPage + 1}–
+                          {Math.min(safeMenuPage * menuPerPage, filteredMenuItems.length)}
+                        </span>{" "}
+                        dari <span className="font-extrabold text-gray-900">{filteredMenuItems.length}</span> menu
+                      </p>
+
+                      {totalMenuPages > 1 && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            disabled={safeMenuPage <= 1}
+                            onClick={() => setMenuCurrentPage((p) => Math.max(1, p - 1))}
+                            className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-700 hover:border-brand-red hover:text-brand-red disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                          >
+                            ← Prev
+                          </button>
+
+                          {Array.from({ length: totalMenuPages }, (_, i) => i + 1).map((pageNum) => (
+                            <button
+                              key={pageNum}
+                              type="button"
+                              onClick={() => setMenuCurrentPage(pageNum)}
+                              className={`w-8 h-8 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
+                                pageNum === safeMenuPage
+                                  ? "bg-gradient-to-r from-[#D32F2F] to-[#8B0000] text-white shadow-xs"
+                                  : "bg-white border border-gray-200 text-gray-600 hover:border-brand-red hover:text-brand-red"
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          ))}
+
+                          <button
+                            type="button"
+                            disabled={safeMenuPage >= totalMenuPages}
+                            onClick={() => setMenuCurrentPage((p) => Math.min(totalMenuPages, p + 1))}
+                            className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-700 hover:border-brand-red hover:text-brand-red disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                          >
+                            Next →
+                          </button>
+                        </div>
                       )}
-                    </tbody>
-                  </table>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
 
             {activeTab === "category" && (
               /* CATEGORY TAB CONTENT */
@@ -2585,14 +3591,14 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
-                      {categories.length === 0 ? (
+                      {filteredCategories.length === 0 ? (
                         <tr>
                           <td colSpan={3} className="py-8 px-6 text-center text-xs text-gray-400 font-bold">
                             Tidak ada kategori tersedia.
                           </td>
                         </tr>
                       ) : (
-                        categories.map((item) => (
+                        filteredCategories.map((item) => (
                           <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
                             <td className="py-4.5 px-6 font-bold text-brand-dark">
                               {item.name}
@@ -2631,56 +3637,6 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {activeTab === "gallery" && (
-              /* GALLERY TAB CONTENT */
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {galleryItems.length === 0 ? (
-                  <div className="col-span-full bg-white border border-gray-100 rounded-3xl p-16 text-center text-xs text-gray-400 font-bold shadow-sm">
-                    Tidak ada item galeri tersedia.
-                  </div>
-                ) : (
-                  galleryItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="bg-white rounded-3xl overflow-hidden border border-gray-200/60 shadow-sm flex flex-col group hover:shadow-md transition-shadow"
-                    >
-                      {/* Image Preview */}
-                      <div className="relative aspect-[4/3] w-full bg-gray-50 border-b border-gray-100 overflow-hidden">
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                        <span className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm text-brand-red text-[9px] font-bold tracking-wider px-2.5 py-1 rounded-full shadow-sm uppercase">
-                          {item.category}
-                        </span>
-                      </div>
-                      
-                      {/* Content & Actions */}
-                      <div className="p-4 flex-grow flex flex-col justify-between gap-4">
-                        <h4 className="font-extrabold text-xs text-brand-dark leading-snug">{item.title}</h4>
-                        
-                        <div className="flex gap-2 justify-end border-t border-gray-50 pt-3">
-                          <button
-                            onClick={() => openGalleryEdit(item)}
-                            className="flex-1 py-2 px-3 border border-gray-200 hover:border-brand-yellow/30 hover:text-brand-yellow text-gray-500 rounded-xl transition-all cursor-pointer bg-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleGalleryDelete(item.id!, item.title)}
-                            className="flex-1 py-2 px-3 border border-gray-200 hover:border-brand-red/30 hover:text-brand-red text-gray-500 rounded-xl transition-all cursor-pointer bg-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1"
-                          >
-                            Hapus
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
             {activeTab === "branch" && (
               /* BRANCH TAB CONTENT */
               <div className="bg-white border border-gray-200/60 rounded-3xl overflow-hidden shadow-sm">
@@ -2704,14 +3660,14 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {branches.length === 0 ? (
+                      {filteredBranches.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="py-12 text-center text-xs text-gray-400 font-bold">
                             Tidak ada cabang ojol tersedia.
                           </td>
                         </tr>
                       ) : (
-                        branches.map((branch) => (
+                        filteredBranches.map((branch) => (
                           <tr key={branch.id} className={`hover:bg-gray-50/50 text-xs ${selectedBranchIds.includes(branch.id!) ? "bg-red-50/5" : ""}`}>
                             {/* Checkbox Selection */}
                             <td className="py-4 px-6 text-center">
@@ -2867,6 +3823,26 @@ export default function AdminDashboard() {
 
                 {/* Table Container */}
                 <div className="bg-white border border-gray-200/60 rounded-3xl overflow-hidden shadow-sm">
+                  <div className="p-4 sm:px-6 border-b border-gray-100 bg-gray-50/40 flex flex-wrap items-center justify-between gap-3">
+                    <span className="text-xs font-extrabold text-gray-700">
+                      Daftar Calon Mitra ({filteredLeads.length})
+                    </span>
+                    <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-full px-3 py-1">
+                      <span className="text-[11px] font-bold text-gray-400">Tampilkan:</span>
+                      <select
+                        value={leadsPerPage}
+                        onChange={(e) => {
+                          setLeadsPerPage(Number(e.target.value));
+                          setLeadsCurrentPage(1);
+                        }}
+                        className="text-xs font-extrabold text-brand-red bg-transparent focus:outline-none cursor-pointer"
+                      >
+                        <option value={10}>10 prospek</option>
+                        <option value={20}>20 prospek</option>
+                        <option value={9999}>Semua</option>
+                      </select>
+                    </div>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
@@ -2887,14 +3863,14 @@ export default function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {partnershipLeads.length === 0 ? (
+                        {paginatedLeads.length === 0 ? (
                           <tr>
                             <td colSpan={6} className="py-12 text-center text-xs text-gray-400 font-bold">
                               Tidak ada prospek kemitraan terdaftar.
                             </td>
                           </tr>
                         ) : (
-                          partnershipLeads.map((lead) => (
+                          paginatedLeads.map((lead) => (
                             <tr key={lead.id} className={`hover:bg-gray-50/50 text-xs ${selectedLeadIds.includes(lead.id!) ? "bg-red-50/5" : ""}`}>
                               {/* Checkbox Selection */}
                               <td className="py-4 px-6 text-center">
@@ -2964,6 +3940,51 @@ export default function AdminDashboard() {
                       </tbody>
                     </table>
                   </div>
+
+                  {filteredLeads.length > 0 && totalLeadsPages > 1 && (
+                    <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <p className="text-xs font-semibold text-gray-500">
+                        Menampilkan{" "}
+                        <span className="font-extrabold text-gray-900">
+                          {(safeLeadsPage - 1) * leadsPerPage + 1}–
+                          {Math.min(safeLeadsPage * leadsPerPage, filteredLeads.length)}
+                        </span>{" "}
+                        dari <span className="font-extrabold text-gray-900">{filteredLeads.length}</span> prospek
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={safeLeadsPage <= 1}
+                          onClick={() => setLeadsCurrentPage((p) => Math.max(1, p - 1))}
+                          className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-700 hover:border-brand-red hover:text-brand-red disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                        >
+                          ← Prev
+                        </button>
+                        {Array.from({ length: totalLeadsPages }, (_, i) => i + 1).map((pageNum) => (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => setLeadsCurrentPage(pageNum)}
+                            className={`w-8 h-8 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
+                              pageNum === safeLeadsPage
+                                ? "bg-gradient-to-r from-[#D32F2F] to-[#8B0000] text-white shadow-xs"
+                                : "bg-white border border-gray-200 text-gray-600 hover:border-brand-red hover:text-brand-red"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          disabled={safeLeadsPage >= totalLeadsPages}
+                          onClick={() => setLeadsCurrentPage((p) => Math.min(totalLeadsPages, p + 1))}
+                          className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-700 hover:border-brand-red hover:text-brand-red disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -3728,6 +4749,322 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 </form>
+
+                {/* =====================================================================
+                    KEAMANAN AKUN & GANTI PASSWORD / USERNAME ADMIN
+                   ===================================================================== */}
+                <div
+                  id="admin-security-section"
+                  className="pt-8 mt-8 border-t-2 border-dashed border-gray-100 space-y-6 scroll-mt-24"
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#F7F7F9] rounded-2xl p-5 border border-gray-200/70">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-[#C62828] text-[10px] font-black uppercase tracking-wider border border-red-100">
+                          🔐 Keamanan Akun Admin
+                        </span>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                            securityInfo.isCustomPassword
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-amber-50 text-amber-700 border border-amber-200"
+                          }`}
+                        >
+                          {securityInfo.isCustomPassword
+                            ? "✅ Menggunakan Password Kustom Database"
+                            : "⚙️ Menggunakan Password Default Sistem (.env)"}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-black text-gray-900 pt-1">
+                        Ganti Password &amp; Username Admin
+                      </h3>
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                        Kredensial dienkripsi dengan <span className="font-bold text-gray-700">Salted SHA-256</span>. Sesi aktif Anda akan otomatis diperbarui setelah menyimpan tanpa perlu login ulang.
+                      </p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl px-4 py-3 border border-gray-200/80 shrink-0 text-left md:text-right">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                        Username Aktif Saat Ini
+                      </p>
+                      <p className="text-sm font-black text-gray-900 mt-0.5">
+                        @{securityInfo.username}
+                      </p>
+                      <p className="text-[10px] text-gray-400 font-medium mt-0.5">
+                        {securityInfo.updatedAt
+                          ? `Diperbarui: ${new Date(securityInfo.updatedAt).toLocaleString("id-ID", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })}`
+                          : "Belum pernah diubah di database"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Caps Lock & Whitespace Human-Error Alerts */}
+                  {(capsLockActive ||
+                    (newPasswordInput.length > 0 && newPasswordInput !== newPasswordInput.trim())) && (
+                    <div className="flex flex-wrap items-center gap-3">
+                      {capsLockActive && (
+                        <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold">
+                          <span>⚠️</span>
+                          <span>
+                            Tombol <strong>Caps Lock</strong> sedang aktif! Perhatikan huruf besar/kecil pada password Anda.
+                          </span>
+                        </div>
+                      )}
+                      {newPasswordInput.length > 0 && newPasswordInput !== newPasswordInput.trim() && (
+                        <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold">
+                          <span>💡</span>
+                          <span>
+                            Terdeteksi spasi di awal/akhir password (biasanya karena copy-paste). Sistem akan otomatis merapikannya.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {(() => {
+                    const cleanUser = adminUsernameInput.trim();
+                    const isUserValid =
+                      cleanUser.length >= 3 &&
+                      cleanUser.length <= 32 &&
+                      /^[a-zA-Z0-9._-]+$/.test(cleanUser);
+
+                    const cleanNew = newPasswordInput.trim();
+                    const cleanConfirm = confirmPasswordInput.trim();
+                    const hasMinLen = cleanNew.length >= 8;
+                    const hasLetterAndNum = /[a-zA-Z]/.test(cleanNew) && /[0-9]/.test(cleanNew);
+                    const notSameAsUser =
+                      cleanNew.length > 0 && cleanNew.toLowerCase() !== cleanUser.toLowerCase();
+                    const hasBonusComplexity =
+                      cleanNew.length >= 12 ||
+                      (/[a-z]/.test(cleanNew) && /[A-Z]/.test(cleanNew)) ||
+                      /[^a-zA-Z0-9]/.test(cleanNew);
+
+                    const strengthScore =
+                      cleanNew.length === 0
+                        ? 0
+                        : (hasMinLen ? 1 : 0) +
+                          (hasLetterAndNum ? 1 : 0) +
+                          (notSameAsUser ? 1 : 0) +
+                          (hasMinLen && hasLetterAndNum && hasBonusComplexity ? 1 : 0);
+
+                    const strengthLabels = ["Belum Diisi", "Lemah", "Cukup", "Kuat", "Sangat Kuat"];
+                    const strengthColors = [
+                      "bg-gray-200",
+                      "bg-red-500",
+                      "bg-amber-500",
+                      "bg-emerald-500",
+                      "bg-emerald-600",
+                    ];
+
+                    const isMatch = cleanNew.length > 0 && cleanConfirm.length > 0 && cleanNew === cleanConfirm;
+                    const isMismatch =
+                      cleanConfirm.length > 0 && cleanNew !== cleanConfirm;
+
+                    return (
+                      <form onSubmit={handleSaveAdminCredentials} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* 1. Username Admin */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <label className="block text-[10px] font-extrabold uppercase text-gray-400 tracking-wider">
+                                Username Admin *
+                              </label>
+                              <span
+                                className={`text-[10px] font-bold ${
+                                  isUserValid ? "text-emerald-600" : "text-red-500"
+                                }`}
+                              >
+                                {isUserValid ? "✓ Format valid" : "✕ 3–32 karakter (tanpa spasi)"}
+                              </span>
+                            </div>
+                            <input
+                              type="text"
+                              required
+                              autoComplete="username"
+                              value={adminUsernameInput}
+                              onChange={(e) => setAdminUsernameInput(e.target.value)}
+                              placeholder="Contoh: admin"
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
+                            />
+                            <span className="text-[10px] text-gray-400 mt-1 block">
+                              Boleh menggunakan huruf, angka, titik (.), garis bawah (_), atau strip (-).
+                            </span>
+                          </div>
+
+                          {/* 2. Password Saat Ini (Verifikasi) */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <label className="block text-[10px] font-extrabold uppercase text-gray-400 tracking-wider">
+                                Password Saat Ini (Wajib untuk Verifikasi) *
+                              </label>
+                              <span className="text-[10px] font-bold text-brand-red">
+                                Wajib diisi
+                              </span>
+                            </div>
+                            <div className="relative">
+                              <input
+                                type={showCurrentPassword ? "text" : "password"}
+                                required
+                                autoComplete="current-password"
+                                value={currentPasswordInput}
+                                onKeyUp={handleCapsLockEvent}
+                                onKeyDown={handleCapsLockEvent}
+                                onChange={(e) => setCurrentPasswordInput(e.target.value)}
+                                placeholder="Masukkan password admin saat ini..."
+                                className="w-full pl-4 pr-11 py-3 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowCurrentPassword((prev) => !prev)}
+                                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-brand-red transition-colors cursor-pointer"
+                                title={showCurrentPassword ? "Sembunyikan password" : "Lihat password"}
+                              >
+                                {showCurrentPassword ? "🙈" : "👁️"}
+                              </button>
+                            </div>
+                            <span className="text-[10px] text-gray-400 mt-1 block">
+                              Mencegah orang lain mengganti password saat perangkat ditinggal terbuka.
+                            </span>
+                          </div>
+
+                          {/* 3. Password Baru */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <label className="block text-[10px] font-extrabold uppercase text-gray-400 tracking-wider">
+                                Password Baru {cleanUser.toLowerCase() !== securityInfo.username.toLowerCase() ? "(Opsional)" : "*"}
+                              </label>
+                              {cleanNew.length > 0 && (
+                                <span className="text-[10px] font-extrabold text-gray-600">
+                                  Kekuatan: {strengthLabels[strengthScore]}
+                                </span>
+                              )}
+                            </div>
+                            <div className="relative">
+                              <input
+                                type={showNewPassword ? "text" : "password"}
+                                autoComplete="new-password"
+                                value={newPasswordInput}
+                                onKeyUp={handleCapsLockEvent}
+                                onKeyDown={handleCapsLockEvent}
+                                onChange={(e) => setNewPasswordInput(e.target.value)}
+                                placeholder="Minimal 8 karakter (huruf & angka)..."
+                                className="w-full pl-4 pr-11 py-3 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowNewPassword((prev) => !prev)}
+                                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-brand-red transition-colors cursor-pointer"
+                                title={showNewPassword ? "Sembunyikan password" : "Lihat password"}
+                              >
+                                {showNewPassword ? "🙈" : "👁️"}
+                              </button>
+                            </div>
+
+                            {/* 4-Bar Strength Meter */}
+                            <div className="grid grid-cols-4 gap-1.5 mt-2.5">
+                              {[1, 2, 3, 4].map((bar) => (
+                                <div
+                                  key={bar}
+                                  className={`h-1.5 rounded-full transition-all ${
+                                    cleanNew.length > 0 && strengthScore >= bar
+                                      ? strengthColors[strengthScore]
+                                      : "bg-gray-100"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+
+                            {/* Live Checklist */}
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[10px] font-semibold">
+                              <span className={hasMinLen ? "text-emerald-600" : "text-gray-400"}>
+                                {hasMinLen ? "✅" : "○"} Min. 8 karakter
+                              </span>
+                              <span className={hasLetterAndNum ? "text-emerald-600" : "text-gray-400"}>
+                                {hasLetterAndNum ? "✅" : "○"} Kombinasi huruf &amp; angka
+                              </span>
+                              <span className={notSameAsUser ? "text-emerald-600" : "text-gray-400"}>
+                                {notSameAsUser ? "✅" : "○"} Berbeda dari username
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* 4. Konfirmasi Password Baru */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <label className="block text-[10px] font-extrabold uppercase text-gray-400 tracking-wider">
+                                Ulangi / Konfirmasi Password Baru {cleanNew.length > 0 ? "*" : ""}
+                              </label>
+                              {isMatch && (
+                                <span className="text-[10px] font-extrabold text-emerald-600">
+                                  ✅ Password cocok
+                                </span>
+                              )}
+                              {isMismatch && (
+                                <span className="text-[10px] font-extrabold text-red-500">
+                                  ❌ Belum sama dengan password baru
+                                </span>
+                              )}
+                            </div>
+                            <div className="relative">
+                              <input
+                                type={showConfirmPassword ? "text" : "password"}
+                                autoComplete="new-password"
+                                value={confirmPasswordInput}
+                                onKeyUp={handleCapsLockEvent}
+                                onKeyDown={handleCapsLockEvent}
+                                onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                                placeholder="Ketik ulang password baru yang sama persis..."
+                                className={`w-full pl-4 pr-11 py-3 rounded-xl border text-xs font-semibold focus:outline-none transition-colors ${
+                                  isMismatch
+                                    ? "border-red-300 bg-red-50/30 focus:border-red-500"
+                                    : isMatch
+                                    ? "border-emerald-300 bg-emerald-50/20 focus:border-emerald-500"
+                                    : "border-gray-200 focus:border-brand-red focus:ring-1 focus:ring-brand-red"
+                                }`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-brand-red transition-colors cursor-pointer"
+                                title={showConfirmPassword ? "Sembunyikan password" : "Lihat password"}
+                              >
+                                {showConfirmPassword ? "🙈" : "👁️"}
+                              </button>
+                            </div>
+                            <span className="text-[10px] text-gray-400 mt-1 block">
+                              Gunakan ikon mata (👁️) untuk memeriksa ketikan sebelum menekan tombol simpan.
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Emergency Recovery Guide Box + Submit Button */}
+                        <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="text-[11px] text-gray-500 bg-gray-50 border border-gray-200/70 rounded-xl px-3.5 py-2.5 max-w-xl leading-relaxed">
+                            <span className="font-extrabold text-gray-700">🛡️ Jaring Pengaman Lupa Password:</span>{" "}
+                            Jika suatu saat Anda lupa password baru, hapus baris{" "}
+                            <code className="px-1.5 py-0.5 rounded bg-gray-200/70 text-gray-800 font-mono text-[10px]">
+                              __admin_password_hash
+                            </code>{" "}
+                            di tabel <code className="font-mono text-[10px]">settings</code> Supabase untuk kembali ke password cadangan <code className="font-mono text-[10px]">.env</code>.
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={isSavingCredentials}
+                            className="bg-gradient-to-r from-[#D32F2F] to-[#8B0000] hover:from-[#B71C1C] hover:to-[#640000] text-white font-extrabold uppercase tracking-widest px-7 py-3.5 rounded-xl text-xs shadow-md hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                          >
+                            {isSavingCredentials
+                              ? "Memverifikasi & Menyimpan..."
+                              : "🔐 Simpan Kredensial Admin"}
+                          </button>
+                        </div>
+                      </form>
+                    );
+                  })()}
+                </div>
               </div>
             )}
 
@@ -3988,7 +5325,8 @@ export default function AdminDashboard() {
             )}
           </div>
         )}
-      </main>
+        </main>
+      </div>
 
 
 
@@ -5030,167 +6368,6 @@ export default function AdminDashboard() {
                     </>
                   ) : (
                     "Simpan Kategori"
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* =========================================================================
-         GALLERY CRUD MODAL
-         ========================================================================= */}
-      {isGalleryModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !isSubmitting && setIsGalleryModalOpen(false)}></div>
-          
-          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full z-10 shadow-2xl border border-gray-100 relative max-h-[90vh] overflow-y-auto animate-fade-in space-y-6">
-            <h3 className="font-black text-lg text-brand-dark border-b border-gray-100 pb-3">
-              {editingGalleryItem ? "Edit Foto Galeri" : "Tambah Foto Galeri Baru"}
-            </h3>
-
-            <form onSubmit={handleGallerySubmit} className="space-y-4">
-              {/* Title */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1.5">Judul Foto *</label>
-                <input
-                  type="text"
-                  required
-                  value={galleryTitle}
-                  onChange={(e) => {
-                    setGalleryTitle(e.target.value);
-                    if (formErrors.galleryTitle) {
-                      setFormErrors((prev) => ({ ...prev, galleryTitle: false }));
-                    }
-                  }}
-                  placeholder="Contoh: Proses Grilling Ayam"
-                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none transition-all ${
-                    formErrors.galleryTitle
-                      ? "border-red-500 ring-1 ring-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50/10"
-                      : "border-gray-200 focus:border-brand-red focus:ring-1 focus:ring-brand-red"
-                  }`}
-                />
-              </div>
-
-              {/* Category */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1.5">Kategori / Lokasi *</label>
-                <input
-                  type="text"
-                  required
-                  value={galleryCat}
-                  onChange={(e) => {
-                    setGalleryCat(e.target.value);
-                    if (formErrors.galleryCat) {
-                      setFormErrors((prev) => ({ ...prev, galleryCat: false }));
-                    }
-                  }}
-                  placeholder="Contoh: Menu, Dapur, Outlet, Bahan Baku"
-                  className={`w-full px-4 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none transition-all ${
-                    formErrors.galleryCat
-                      ? "border-red-500 ring-1 ring-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50/10"
-                      : "border-gray-200 focus:border-brand-red focus:ring-1 focus:ring-brand-red"
-                  }`}
-                />
-              </div>
-
-              {/* Image Upload / Input */}
-              <div className="space-y-3">
-                <div className="flex flex-col gap-0.5">
-                  <label className="block text-[10px] font-bold uppercase text-gray-400 mb-0">Gambar Galeri *</label>
-                  <span className="text-[9px] text-gray-400 leading-normal">
-                    Unggah file gambar langsung (disarankan) atau gunakan link gambar langsung (.jpg/.png/.webp). Jangan menggunakan link halaman pencarian Google.
-                  </span>
-                </div>
-                
-                {/* Image Preview Window */}
-                {imagePreview && (
-                  <div className="relative w-full h-[160px] bg-gray-50 rounded-xl overflow-hidden border border-gray-200">
-                    <img
-                      src={imagePreview}
-                      alt="Pratinjau gambar"
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setImagePreview("");
-                        setSelectedFile(null);
-                        setImageUrlInput("");
-                      }}
-                      className="absolute top-2 right-2 bg-red-600/90 text-white rounded-lg p-1.5 hover:bg-red-700 transition-colors shadow"
-                      title="Hapus Gambar"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
-
-                {/* Upload options */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* File Upload */}
-                  <div className="space-y-1">
-                    <span className="block text-[9px] font-bold text-gray-400 uppercase">Unggah File</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-bold file:uppercase file:bg-brand-red/5 file:text-brand-red hover:file:bg-brand-red/10 cursor-pointer"
-                    />
-                  </div>
-                  {/* URL Input */}
-                  <div className="space-y-1">
-                    <span className="block text-[9px] font-bold text-gray-400 uppercase">Atau Masukkan Link URL</span>
-                    <input
-                      type="text"
-                      value={imageUrlInput}
-                      onChange={(e) => {
-                        setImageUrlInput(e.target.value);
-                        setImagePreview(e.target.value);
-                        setSelectedFile(null);
-                        if (formErrors.image) {
-                          setFormErrors((prev) => ({ ...prev, image: false }));
-                        }
-                      }}
-                      placeholder="https://example.com/gallery.jpg"
-                      className={`w-full px-4 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none transition-all ${
-                        formErrors.image
-                          ? "border-red-500 ring-1 ring-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50/10"
-                          : "border-gray-200 focus:border-brand-red focus:ring-1 focus:ring-brand-red"
-                      }`}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t border-gray-100">
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => setIsGalleryModalOpen(false)}
-                  className="flex-1 py-3 bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 font-bold uppercase tracking-wider rounded-xl text-xs transition-all cursor-pointer text-center"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest py-3.5 rounded-xl text-xs transition-all duration-200 shadow-md hover:shadow-lg disabled:bg-gray-400 cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      {isUploading ? "Mengunggah..." : "Menyimpan..."}
-                    </>
-                  ) : (
-                    "Simpan Foto"
                   )}
                 </button>
               </div>

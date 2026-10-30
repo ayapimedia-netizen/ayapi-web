@@ -76,7 +76,7 @@ export const logger = {
     );
   },
 
-  auth: (event: "LOGIN" | "LOGOUT" | "CHECK" | "DENIED", message: string) => {
+  auth: (event: "LOGIN" | "LOGOUT" | "CHECK" | "DENIED" | "SECURITY", message: string) => {
     const badge =
       event === "LOGIN"
         ? `${colors.green}[AUTH LOGIN]${colors.reset}`
@@ -84,6 +84,8 @@ export const logger = {
         ? `${colors.yellow}[AUTH LOGOUT]${colors.reset}`
         : event === "DENIED"
         ? `${colors.red}[AUTH DENIED]${colors.reset}`
+        : event === "SECURITY"
+        ? `${colors.magenta}[AUTH SECURITY]${colors.reset}`
         : `${colors.cyan}[AUTH CHECK]${colors.reset}`;
 
     console.log(

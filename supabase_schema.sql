@@ -158,7 +158,7 @@ DROP POLICY IF EXISTS "Izinkan publik membaca settings" ON public.settings;
 CREATE POLICY "Izinkan publik membaca settings"
 ON public.settings
 FOR SELECT
-USING (true);
+USING (key NOT LIKE '__admin_%');
 
 
 -- 9. Tabel hero_slides

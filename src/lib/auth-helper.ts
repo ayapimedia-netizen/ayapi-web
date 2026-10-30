@@ -56,34 +56,77 @@ function sha256(str: string): string {
   return H.map(x => (x >>> 0).toString(16).padStart(8, '0')).join('');
 }
 
+function getSessionSecret(): string {
+  return process.env.SESSION_SECRET || "ayapi-fallback-secure-salt-key-999";
+}
+
+/**
+ * Hashes an admin password using SHA-256 + server secret salt so plaintext passwords
+ * are never stored in the database.
+ */
+export function hashAdminPassword(password: string): string {
+  const secret = getSessionSecret();
+  return sha256(`ayapi_admin_pw_v1:${secret}:${password}`);
+}
+
+/**
+ * Generates a short fingerprint of the active username + passwordHash to bind sessions
+ * to the current credentials without exposing secrets.
+ */
+export function getCredentialFingerprint(username: string, passwordHash: string): string {
+  const secret = getSessionSecret();
+  return sha256(`ayapi_cred_fp:${username.trim().toLowerCase()}:${passwordHash}:${secret}`).slice(0, 16);
+}
+
+/**
+ * Creates a signed session cookie value (`hash:timestamp:credFingerprint`).
+ */
+export function createAdminSessionToken(timestamp: number, credFingerprint: string): string {
+  const secret = getSessionSecret();
+  const signature = sha256(`${credFingerprint}:${secret}:${timestamp}`);
+  return `${signature}:${timestamp}:${credFingerprint}`;
+}
+
 /**
  * Calculates a cryptographically secure session token based on admin credentials
  * and a secret key with a timestamp. This prevents cookie spoofing / authentication bypass.
  */
-export function getSecureSessionTokenWithTimestamp(timestamp: number): string {
+export function getSecureSessionTokenWithTimestamp(timestamp: number, credFingerprint?: string): string {
+  const secret = getSessionSecret();
+  if (credFingerprint) {
+    return sha256(`${credFingerprint}:${secret}:${timestamp}`);
+  }
   const adminUser = process.env.ADMIN_USERNAME || "admin";
   const adminPass = process.env.ADMIN_PASSWORD || "m1n66A61lAA";
-  const secret = process.env.SESSION_SECRET || "ayapi-fallback-secure-salt-key-999";
-  
   return sha256(`${adminUser}:${adminPass}:${secret}:${timestamp}`);
 }
 
-export function isSessionValid(sessionValue: string | undefined): boolean {
+export function isSessionValid(sessionValue: string | undefined, expectedFingerprint?: string): boolean {
   if (!sessionValue) return false;
   const parts = sessionValue.split(":");
-  if (parts.length !== 2) return false;
-  
-  const [hash, timestampStr] = parts;
+  if (parts.length !== 2 && parts.length !== 3) return false;
+
+  const [hash, timestampStr, tokenFingerprint] = parts;
   const timestamp = parseInt(timestampStr, 10);
   if (isNaN(timestamp)) return false;
-  
+
   const now = Date.now();
   if (now - timestamp > 24 * 60 * 60 * 1000) {
     return false;
   }
-  
+
+  if (parts.length === 3) {
+    if (!tokenFingerprint) return false;
+    if (expectedFingerprint && tokenFingerprint !== expectedFingerprint) {
+      return false;
+    }
+    const expectedHash = getSecureSessionTokenWithTimestamp(timestamp, tokenFingerprint);
+    return hash === expectedHash;
+  }
+
   const expectedHash = getSecureSessionTokenWithTimestamp(timestamp);
   return hash === expectedHash;
 }
+
 
 
