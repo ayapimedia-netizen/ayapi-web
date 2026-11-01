@@ -92,6 +92,8 @@ import {
   getAdminSecurityInfo,
   updateAdminCredentials,
   AdminSecurityInfo,
+  uploadProposalPdf,
+  updateProposalPdfUrl,
 } from "@/app/actions";
 
 
@@ -373,6 +375,10 @@ export default function AdminDashboard() {
   const [settingHalal, setSettingHalal] = useState("ID3111000012345");
   const [settingHaki, setSettingHaki] = useState("IPT2024001234");
   const [settingCogsPercent, setSettingCogsPercent] = useState("55");
+  const [settingProposalUrl, setSettingProposalUrl] = useState("/proposal-kemitraan-ayapi.pdf");
+  const [proposalPdfFile, setProposalPdfFile] = useState<File | null>(null);
+  const [isUploadingProposal, setIsUploadingProposal] = useState(false);
+  const [isSavingProposal, setIsSavingProposal] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   // Form Fields - Admin Security & Credentials
@@ -561,6 +567,7 @@ export default function AdminDashboard() {
             if (settingsData.halal_cert_number) setSettingHalal(settingsData.halal_cert_number);
             if (settingsData.haki_cert_number) setSettingHaki(settingsData.haki_cert_number);
             if (settingsData.roi_cogs_percent) setSettingCogsPercent(settingsData.roi_cogs_percent);
+            if (settingsData.proposal_pdf_url) setSettingProposalUrl(settingsData.proposal_pdf_url);
           }
         }
       } catch (err) {
@@ -1709,6 +1716,7 @@ export default function AdminDashboard() {
         halal_cert_number: settingHalal.trim(),
         haki_cert_number: settingHaki.trim(),
         roi_cogs_percent: settingCogsPercent.trim(),
+        proposal_pdf_url: settingProposalUrl.trim() || "/proposal-kemitraan-ayapi.pdf",
       };
       await updateAllSiteSettings(payload);
       showMsg("success", "Pengaturan website berhasil disimpan & diperbarui!");
@@ -1717,6 +1725,60 @@ export default function AdminDashboard() {
       showMsg("error", err instanceof Error ? err.message : "Gagal menyimpan pengaturan website.");
     } finally {
       setIsSavingSettings(false);
+    }
+  };
+
+  // PROPOSAL PDF HANDLERS
+  const handleProposalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 25 * 1024 * 1024) {
+        showMsg("error", "Ukuran file PDF terlalu besar! Maksimal 25MB.");
+        e.target.value = "";
+        return;
+      }
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      if (ext !== "pdf") {
+        showMsg("error", "Format file tidak didukung! Hanya file PDF (.pdf) yang diperbolehkan.");
+        e.target.value = "";
+        return;
+      }
+      setProposalPdfFile(file);
+    }
+  };
+
+  const handleSaveProposalPdf = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingProposal(true);
+    try {
+      let finalUrl = settingProposalUrl.trim();
+
+      if (proposalPdfFile) {
+        setIsUploadingProposal(true);
+        const formData = new FormData();
+        formData.append("file", proposalPdfFile);
+        const uploadResult = await uploadProposalPdf(formData);
+        if (uploadResult?.url) {
+          finalUrl = uploadResult.url;
+          setSettingProposalUrl(uploadResult.url);
+        }
+        setIsUploadingProposal(false);
+      }
+
+      if (!finalUrl) {
+        showMsg("error", "URL atau berkas PDF proposal wajib diisi.");
+        return;
+      }
+
+      await updateProposalPdfUrl(finalUrl);
+      setProposalPdfFile(null);
+      showMsg("success", "File Proposal Kemitraan (PDF) berhasil diperbarui!");
+    } catch (err: unknown) {
+      console.error("Error saving proposal PDF:", err);
+      showMsg("error", err instanceof Error ? err.message : "Gagal memperbarui file proposal PDF.");
+    } finally {
+      setIsSavingProposal(false);
+      setIsUploadingProposal(false);
     }
   };
 
@@ -4737,6 +4799,47 @@ export default function AdminDashboard() {
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
                       />
                     </div>
+
+                    {/* Proposal PDF URL */}
+                    <div className="md:col-span-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-[10px] font-extrabold uppercase text-gray-400 tracking-wider">
+                          URL / Berkas Proposal Kemitraan (PDF)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("packages")}
+                          className="text-[10px] font-bold text-brand-red hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <span>Kelola &amp; Upload PDF di Menu Paket Kemitraan</span>
+                          <span>↗</span>
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={settingProposalUrl}
+                          onChange={(e) => setSettingProposalUrl(e.target.value)}
+                          placeholder="Contoh: /proposal-kemitraan-ayapi.pdf atau URL cloud"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red font-mono"
+                        />
+                        {settingProposalUrl && (
+                          <a
+                            href={settingProposalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1 transition-colors"
+                            title="Buka / Preview PDF"
+                          >
+                            <span>Lihat</span>
+                            <span>↗</span>
+                          </a>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-gray-400 mt-1 block">
+                        File PDF yang otomatis diunduh saat calon mitra mengisi form di halaman Kemitraan.
+                      </span>
+                    </div>
                   </div>
 
                   <div className="pt-4 border-t border-gray-100 flex justify-end">
@@ -5069,9 +5172,205 @@ export default function AdminDashboard() {
             )}
 
             {activeTab === "packages" && (
-              /* PARTNERSHIP PACKAGES TAB CONTENT */
-              <div className="bg-white border border-gray-200/60 rounded-3xl overflow-hidden shadow-sm animate-fade-in">
-                <div className="overflow-x-auto">
+              /* PARTNERSHIP PACKAGES & PROPOSAL PDF TAB CONTENT */
+              <div className="space-y-6 animate-fade-in">
+                {/* =====================================================================
+                    DOKUMEN PROPOSAL KEMITRAAN (PDF) MANAGEMENT CARD
+                   ===================================================================== */}
+                <div className="bg-white border border-gray-200/60 rounded-3xl p-6 sm:p-7 shadow-sm space-y-6">
+                  {/* Card Header */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-5">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-[#C62828] text-[10px] font-black uppercase tracking-wider border border-red-100">
+                          📄 Dokumen Resmi Kemitraan
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Terhubung ke Halaman /kemitraan
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-black text-gray-900 tracking-tight pt-1">
+                        Proposal Bisnis &amp; Franchise Ayapi (PDF)
+                      </h3>
+                      <p className="text-xs text-gray-500 max-w-2xl leading-relaxed">
+                        Dokumen PDF ini akan otomatis diunduh oleh calon investor saat mereka memasukkan Nama dan nomor WhatsApp pada tombol &quot;Download Proposal Kemitraan&quot;.
+                      </p>
+                    </div>
+
+                    {/* Preview / Download Current File Button */}
+                    <div className="shrink-0 flex items-center gap-2">
+                      <a
+                        href={settingProposalUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 text-xs font-bold transition-all hover:border-brand-red/40 hover:text-brand-red cursor-pointer shadow-2xs"
+                        title="Buka atau unduh file proposal aktif saat ini"
+                      >
+                        <svg className="w-4 h-4 text-brand-red" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>Pratinjau Proposal Aktif</span>
+                        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Active Proposal Info Banner */}
+                  <div className="bg-[#F7F7F9] rounded-2xl p-4 sm:p-5 border border-gray-200/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-red-500 to-rose-700 text-white flex items-center justify-center font-black text-xs shadow-md shadow-red-500/20 shrink-0">
+                        PDF
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                          URL / Path Proposal Saat Ini
+                        </p>
+                        <p className="text-xs font-mono font-bold text-gray-800 break-all">
+                          {settingProposalUrl}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-white text-gray-600 border border-gray-200 shadow-2xs whitespace-nowrap">
+                      {settingProposalUrl.startsWith("http") ? "Cloud Storage (Supabase/CDN)" : "File Bawaan Server Lokal"}
+                    </span>
+                  </div>
+
+                  {/* Edit Proposal Form */}
+                  <form onSubmit={handleSaveProposalPdf} className="space-y-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {/* Opsi 1: Upload File PDF Baru */}
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-extrabold uppercase text-gray-400 tracking-wider">
+                          Opsi 1: Upload Berkas PDF Baru (Maks. 25MB)
+                        </label>
+                        <div className="relative border-2 border-dashed border-gray-200 hover:border-brand-red/50 rounded-2xl p-4 transition-all bg-gray-50/50 hover:bg-red-50/20 flex flex-col items-center justify-center text-center cursor-pointer group">
+                          <input
+                            type="file"
+                            accept=".pdf,application/pdf"
+                            onChange={handleProposalFileChange}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          />
+                          <div className="w-10 h-10 rounded-full bg-white shadow-2xs flex items-center justify-center text-brand-red mb-2 group-hover:scale-110 transition-transform">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                          </div>
+                          {proposalPdfFile ? (
+                            <div className="space-y-0.5">
+                              <p className="text-xs font-bold text-brand-red line-clamp-1">
+                                📑 {proposalPdfFile.name}
+                              </p>
+                              <p className="text-[10px] text-gray-500 font-semibold">
+                                Ukuran: {(proposalPdfFile.size / (1024 * 1024)).toFixed(2)} MB • Siap disimpan
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-0.5">
+                              <p className="text-xs font-bold text-gray-700">
+                                Klik atau seret file PDF proposal ke sini
+                              </p>
+                              <p className="text-[10px] text-gray-400">
+                                Hanya format .PDF hingga ukuran 25MB
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        {proposalPdfFile && (
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setProposalPdfFile(null)}
+                              className="text-[10px] font-bold text-gray-400 hover:text-brand-red transition-colors cursor-pointer"
+                            >
+                              ✕ Batalkan pilihan file baru
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Opsi 2: Input URL Link PDF Langsung */}
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-extrabold uppercase text-gray-400 tracking-wider">
+                          Opsi 2: Atau Tautkan URL Berkas PDF Langsung
+                        </label>
+                        <div className="space-y-1.5">
+                          <input
+                            type="text"
+                            value={settingProposalUrl}
+                            onChange={(e) => setSettingProposalUrl(e.target.value)}
+                            placeholder="Contoh: https://... atau /proposal-kemitraan-ayapi.pdf"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-xs font-semibold focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red font-mono"
+                          />
+                          <p className="text-[10px] text-gray-400 leading-relaxed">
+                            Bisa berupa link file PDF dari Google Drive, Dropbox, Supabase, atau path lokal server.
+                          </p>
+                        </div>
+
+                        {/* Reset button to default */}
+                        {settingProposalUrl !== "/proposal-kemitraan-ayapi.pdf" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSettingProposalUrl("/proposal-kemitraan-ayapi.pdf");
+                              setProposalPdfFile(null);
+                            }}
+                            className="text-[10px] font-bold text-brand-red hover:underline transition-all cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <span>↺ Kembalikan ke PDF Bawaan Sistem (/proposal-kemitraan-ayapi.pdf)</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Submit Bar */}
+                    <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <p className="text-[11px] text-gray-500 font-medium">
+                        💡 Begitu disimpan, pengunjung yang mengisi formulir download proposal di website akan langsung mengunduh versi terbaru ini.
+                      </p>
+                      <button
+                        type="submit"
+                        disabled={isSavingProposal || isUploadingProposal}
+                        className="bg-gradient-to-r from-[#D32F2F] to-[#8B0000] hover:from-[#B71C1C] hover:to-[#640000] text-white font-extrabold uppercase tracking-widest px-6 py-3 rounded-xl text-xs shadow-md hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 shrink-0 flex items-center justify-center gap-2"
+                      >
+                        {isSavingProposal || isUploadingProposal ? (
+                          <>
+                            <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            <span>Menyimpan Proposal...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>💾 Simpan Perubahan Proposal PDF</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* =====================================================================
+                    TABEL DAFTAR PAKET KEMITRAAN
+                   ===================================================================== */}
+                <div className="bg-white border border-gray-200/60 rounded-3xl overflow-hidden shadow-sm">
+                  <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-extrabold text-sm text-gray-900">Daftar Paket Usaha Kemitraan</h4>
+                      <p className="text-[10px] text-gray-400 font-medium">Paket kemitraan yang tampil di halaman website</p>
+                    </div>
+                    <button
+                      onClick={openPackageAdd}
+                      className="bg-brand-red hover:bg-[#a01c1c] text-white font-extrabold uppercase tracking-widest px-4 py-2 rounded-xl shadow-xs text-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span className="text-sm leading-none">+</span>
+                      <span>Tambah Paket</span>
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50/50">
@@ -5143,7 +5442,8 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
             {activeTab === "faqs" && (
               /* FAQS TAB CONTENT */

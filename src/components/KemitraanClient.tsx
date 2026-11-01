@@ -335,9 +335,12 @@ export default function KemitraanClient({
   };
 
   const triggerPdfDownload = () => {
+    const proposalUrl = siteSettings?.proposal_pdf_url || "/proposal-kemitraan-ayapi.pdf";
     const link = document.createElement("a");
-    link.href = "/proposal-kemitraan-ayapi.pdf";
+    link.href = proposalUrl;
     link.download = "Proposal-Kemitraan-Ayapi.pdf";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

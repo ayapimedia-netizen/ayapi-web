@@ -93,6 +93,7 @@ export type SiteSettings = {
   halal_cert_number?: string;
   haki_cert_number?: string;
   roi_cogs_percent?: string;
+  proposal_pdf_url?: string;
   [key: string]: string | undefined;
 };
 
@@ -1055,6 +1056,102 @@ export async function uploadImage(formData: FormData): Promise<{ url: string }> 
     logger.error("STORAGE", "Failed to upload image locally", err);
     throw new Error("Gagal mengunggah gambar ke cloud maupun lokal.");
   }
+}
+
+export async function uploadProposalPdf(
+  formData: FormData
+): Promise<{ url: string; fileName: string; size: number }> {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  const file = formData.get("file") as File;
+  if (!file) throw new Error("Tidak ada berkas yang diunggah.");
+
+  // Server-side size verification (max 25MB)
+  if (file.size > 25 * 1024 * 1024) {
+    throw new Error("Ukuran berkas PDF melebihi batas maksimal 25MB.");
+  }
+
+  // Server-side extension verification
+  const fileExt = file.name.split(".").pop()?.toLowerCase();
+  if (fileExt !== "pdf") {
+    throw new Error("Format berkas harus PDF (.pdf).");
+  }
+
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  const safeFileName = `proposal-kemitraan-${Date.now()}.${fileExt}`;
+
+  // Strategy A: Upload to Supabase Storage if configured
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await supabaseAdmin.storage
+        .from("ayapi-media")
+        .upload(safeFileName, buffer, {
+          contentType: "application/pdf",
+          upsert: true,
+        });
+
+      if (error) {
+        logger.warn(
+          "STORAGE",
+          `Supabase Storage PDF upload failed (${error.message}), switching to local storage.`
+        );
+      } else if (data) {
+        const { data: publicUrlData } = supabaseAdmin.storage
+          .from("ayapi-media")
+          .getPublicUrl(safeFileName);
+
+        if (publicUrlData?.publicUrl) {
+          logger.storage("UPLOAD", safeFileName, "Supabase Storage ayapi-media (PDF Proposal)");
+          return { url: publicUrlData.publicUrl, fileName: file.name, size: file.size };
+        }
+      }
+    } catch (err) {
+      logger.warn("STORAGE", "Error uploading PDF to Supabase Storage, switching to local storage.", err);
+    }
+  }
+
+  // Strategy B: Fallback to local file upload (/public/uploads)
+  try {
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const filePath = path.join(uploadDir, safeFileName);
+    await fs.writeFile(filePath, buffer);
+
+    logger.storage("FALLBACK", safeFileName, "Saved locally at /public/uploads (PDF Proposal)");
+    return { url: `/uploads/${safeFileName}`, fileName: file.name, size: file.size };
+  } catch (err) {
+    logger.error("STORAGE", "Failed to upload PDF locally", err);
+    throw new Error("Gagal mengunggah proposal PDF ke cloud maupun server lokal.");
+  }
+}
+
+export async function updateProposalPdfUrl(url: string) {
+  const isAdmin = await checkAdminSession();
+  if (!isAdmin) throw new Error("Unauthorized");
+
+  const cleanUrl = url.trim();
+  if (!cleanUrl) {
+    throw new Error("URL berkas proposal PDF tidak boleh kosong.");
+  }
+
+  if (isSupabaseConfigured()) {
+    const { error } = await supabaseAdmin
+      .from("settings")
+      .upsert({ key: "proposal_pdf_url", value: cleanUrl });
+    if (error) {
+      console.error("Error updating proposal PDF URL:", error);
+      throw new Error(error.message || "Gagal memperbarui URL Proposal di database.");
+    }
+  }
+
+  revalidatePath("/kemitraan");
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { success: true, url: cleanUrl };
 }
 
 /* =========================================================================
@@ -2266,6 +2363,7 @@ const fallbackSettings: Record<string, string> = {
   halal_cert_number: "ID3111000012345",
   haki_cert_number: "IPT2024001234",
   roi_cogs_percent: "55",
+  proposal_pdf_url: "/proposal-kemitraan-ayapi.pdf",
 };
 
 const cachedGetAllSiteSettings = cache(async (): Promise<Record<string, string>> => {
@@ -2291,6 +2389,9 @@ const cachedGetAllSiteSettings = cache(async (): Promise<Record<string, string>>
     }
     if (!result.wa_number_formatted || result.wa_number_formatted.includes("877")) {
       result.wa_number_formatted = "+62 821-3444-730";
+    }
+    if (!result.proposal_pdf_url) {
+      result.proposal_pdf_url = "/proposal-kemitraan-ayapi.pdf";
     }
     return result;
   } catch (err) {
